@@ -48,7 +48,8 @@ object Juego {
             val fil = 9
             val col = 9
             val ale = 4 //semillas 
-            val tablero = generarAle(generarTablero(col*fil), ale, posicion, 9*9)
+            val tablero = generarTablero(col*fil)
+            val casillasLibres = comprobarCasillasLibres(tablero, tablero.length)
             imprimirTablero(tablero, col-1, fil)
         }
           else if(nivel == 3){
@@ -73,24 +74,46 @@ object Juego {
 		        case _ => (0)::generarTablero(col-1)
 	  }
        
-         
+       def buscarIndice(l:List[Int], posicion: Int) : Int = {
+         if (l.length == 0) 0
+         else{
+           if(l.length == posicion){
+             return l.head
+             }
+             else{
+               buscarIndice(l.tail, posicion)
+           }
+         }
+       }
       
-       def generarAle(l:List[Int], semillas:Int, posicion:Int, tamano:Int): List[Int] = {
-          val aleatorio = ((Math.random()*9) + 1)
-   			  if (l.head == Nil || semillas==0) l
+  /*     def generarAle(l:List[Int], semillas:Int, posicionesLibres: List[Int]): List[Int] = {
+          val aleatorio = (Math.random()*posicionesLibres.length)
+          
+   			  if (l.length == 0 || semillas==0) l
    			  else{
-   				    if(l.head==0 && aleatorio.toInt== posicion) {
+   				    if(l.head==0 && aleatorio.toInt== posicionesLibree) {
   					    val a = 2
   					    val semillas2 = semillas -1
-  					    List(a):::generarAle(l.tail, semillas2, posicion+1, tamano)
+  					    List(a):::generarAle(l.tail, semillas2, pos1)
   					      
    				    }else{
-   					    List(l.head):::generarAle(l.tail, semillas, posicion, tamano)
+   					    List(l.head):::generarAle(l.tail, semillas, posicion)
    				    }
    			
    			}
    }
-       
+       */
+    def comprobarCasillasLibres(l:List[Int], posicion:Int) : List[Int] ={
+      val nuevaposicion = posicion-1
+      if (l.length == 0) l
+      else {
+        if (l.head == 0) {
+          List(posicion):::comprobarCasillasLibres(l.tail, nuevaposicion)
+        }else{
+          List():::comprobarCasillasLibres(l.tail, nuevaposicion)
+        }
+      }
+    }
     def imprimir_aux(l:List[Int],salto:Int,n:Int,fil:Int,fil_final:Int):Unit = {
   	if(l.length ==  0) print("\n")
   	else if(n==salto+1){
