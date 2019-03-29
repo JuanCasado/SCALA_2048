@@ -24,6 +24,16 @@ object Juego {
 		        reiniciarJuego(vidas)
 		        
         }
+        def imprimirCabecera(col:Int,num:Int):Unit = {
+            if(col==num-1) println(num)
+            else{
+              print(num + "\t")
+              val n = num + 1
+              imprimirCabecera(col,n)
+        }
+    
+    
+        }
        def seleccionNivel(nivel:Int, vidas:Int):Unit = {
              val posicion = 1         
      /*El nivel 1 muestra un tablero de 4x4 con dos semillas de 2*/
@@ -31,28 +41,28 @@ object Juego {
             val fil = 2
             val col = 2
             val ale = 2 //dos semillas 
-            val tablero = generarAle(generarTablero(col*fil), ale, posicion, 2*2)
-            imprimirTablero(tablero, col-1, 0,1, fil)
+            val tablero = generarTablero(col*fil)
+            imprimirTablero(tablero, col-1, fil)
          
         }else if(nivel == 2){
             val fil = 9
             val col = 9
             val ale = 4 //semillas 
             val tablero = generarAle(generarTablero(col*fil), ale, posicion, 9*9)
-            imprimirTablero(tablero, col-1, 0,1, fil)
+            imprimirTablero(tablero, col-1, fil)
         }
           else if(nivel == 3){
             val fil = 14
             val col = 14
             val ale = 6 //semillas 
-            val tablero = generarAle(generarTablero(col*fil), ale, posicion, 14*14)
-            imprimirTablero(tablero, col-1, 0,1, fil)
+            val tablero = generarTablero(col*fil)
+            imprimirTablero(tablero, col-1, fil)
         }else if(nivel == 4){
             val fil = 17
             val col = 17
             val ale = 6 //semillas 
-            val tablero = generarAle(generarTablero(col*fil), ale, posicion, 17*17)
-            imprimirTablero(tablero, col-1, 0,1, fil)
+            val tablero = generarTablero(col*fil)
+            imprimirTablero(tablero, col-1, fil)
         }else{
             System.err.println("Error, por favor, escoja un nivel válido")
             inicioJuego(vidas)
@@ -67,7 +77,7 @@ object Juego {
       
        def generarAle(l:List[Int], semillas:Int, posicion:Int, tamano:Int): List[Int] = {
           val aleatorio = ((Math.random()*9) + 1)
-   			  if (l.head == null || semillas==0) l
+   			  if (l.head == Nil || semillas==0) l
    			  else{
    				    if(l.head==0 && aleatorio.toInt== posicion) {
   					    val a = 2
@@ -80,9 +90,10 @@ object Juego {
    			
    			}
    }
-def imprimirTablero(l:List[Int],salto:Int,n:Int,fil:Int,fil_final:Int):Unit = {
-  	if(l.isEmpty) print("\n")
-  	else if(n==salto){
+       
+    def imprimir_aux(l:List[Int],salto:Int,n:Int,fil:Int,fil_final:Int):Unit = {
+  	if(l.length ==  0) print("\n")
+  	else if(n==salto+1){
   	
   				print(l.head)
   				val f = fil+1
@@ -90,17 +101,24 @@ def imprimirTablero(l:List[Int],salto:Int,n:Int,fil:Int,fil_final:Int):Unit = {
   				  print("\t\n")
   				  
   				}else{
-  				  print("\t\n" )
+  				  print("\t\n"+ f +"\t|\t" )
   				}
   				
-  				imprimirTablero(l.tail, salto, 0,f,fil_final)
+  				imprimir_aux(l.tail, salto, 0,f,fil_final)
   				
   				
   		} else {
   			print(l.head)
   			print("\t")
-  			imprimirTablero(l.tail, salto, n+1,fil,fil_final)
+  			imprimir_aux(l.tail, salto, n+1,fil,fil_final)
   		}
+  }
+ def imprimirTablero(l:List[Int],col:Int,fil:Int) ={
+    print("\t\t")
+    imprimirCabecera(col,1)
+    println("-----------" * col)
+    print("1\t| \t")
+  		imprimir_aux(l,col-1,0,1,fil)
   }
 
 def reiniciarJuego(vidas:Int):Unit = {
