@@ -49,8 +49,12 @@ object Juego {
             val col = 9
             val ale = 4 //semillas 
             val tablero = generarTablero(col*fil)
+            val posicion = 1
             val casillasLibres = comprobarCasillasLibres(tablero, tablero.length)
-            imprimirTablero(tablero, col-1, fil)
+            val vectorAleatorios= generarVector(casillasLibres, ale) //creamos un vector con 4 posiciones libres del tablero
+            val tableroJuego = colocarSemillas(tablero, ale, vectorAleatorios, posicion)
+            imprimirTablero(tableroJuego, col-1, fil)
+            imprimirTablero(vectorAleatorios, 4, 1)
         }
           else if(nivel == 3){
             val fil = 14
@@ -85,24 +89,43 @@ object Juego {
            }
          }
        }
-      
-  /*     def generarAle(l:List[Int], semillas:Int, posicionesLibres: List[Int]): List[Int] = {
-          val aleatorio = (Math.random()*posicionesLibres.length)
-          
+      /*Función que recibe un vector de todas las posiciones libres del tablero, el número de semillas que hay que crear
+       * y devulve un vector con posiciones aleatorias fijas*/
+       
+       def generarVector(posicionesLibres: List[Int], semillas: Int): List[Int] ={
+           
+		        if (semillas < -1) Nil
+		        else{
+		          val aleatorio = (Math.random()*posicionesLibres.length)
+              val indiceCasillasLibres = buscarIndice(posicionesLibres, aleatorio.toInt)
+              val semillasaux = semillas -1
+		          (indiceCasillasLibres)::generarVector(posicionesLibres, semillasaux)
+		          }
+		        
+       }
+       
+       def colocarSemillas(l:List[Int], semillas:Int, posicionesLibres: List[Int], posicionActual:Int): List[Int] = {
+          print(posicionesLibres.head, "posiciones libres \n")
+   			  print(posicionActual, "posicion \n")
    			  if (l.length == 0 || semillas==0) l
+   			 
    			  else{
-   				    if(l.head==0 && aleatorio.toInt== posicionesLibree) {
+   				    if(posicionActual == posicionesLibres.head ) {
   					    val a = 2
   					    val semillas2 = semillas -1
-  					    List(a):::generarAle(l.tail, semillas2, pos1)
+  					    val posicionNueva = posicionActual + 1
+  					    
+  					    List(a):::colocarSemillas(l.tail, semillas2, posicionesLibres.tail, posicionNueva)
   					      
    				    }else{
-   					    List(l.head):::generarAle(l.tail, semillas, posicion)
+   				      
+   				      val posicionNueva = posicionActual + 1
+   					    List(l.head):::colocarSemillas(l.tail, semillas, posicionesLibres, posicionNueva)
    				    }
    			
    			}
    }
-       */
+       
     def comprobarCasillasLibres(l:List[Int], posicion:Int) : List[Int] ={
       val nuevaposicion = posicion-1
       if (l.length == 0) l
@@ -148,9 +171,10 @@ def reiniciarJuego(vidas:Int):Unit = {
   
   if(vidas > 0){
      println("¿Desea comenzar otra partida? 1 = sí 0 = No");
+     val v= vidas -1 
      val respuesta = new Scanner(System.in)
      if (respuesta.nextInt() == 1){
-        inicioJuego(vidas)
+        inicioJuego(v)
      }else{
        print("Gracias por jugar, adios!!")
      }
