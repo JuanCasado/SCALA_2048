@@ -40,34 +40,50 @@ object Juego {
           if(nivel==1){
             val fil = 2
             val col = 2
-            val ale = 2 //dos semillas 
+            val ale = 1 //dos semillas 
             val tablero = generarTablero(col*fil)
-            imprimirTablero(tablero, col-1, fil)
+            val posicion = 0
+            val casillasLibres = comprobarCasillasLibres(tablero, tablero.length)
+            val vectorAleatorios= generarVector(casillasLibres, ale) //creamos un vector con 2 posiciones libres del tablero
+            val tableroJuego = colocarTablero(tablero, vectorAleatorios, ale)
+            imprimirTablero(tableroJuego, col-1, fil)
+            imprimirTablero(vectorAleatorios, ale, 1)
+          
          
         }else if(nivel == 2){
             val fil = 9
             val col = 9
-            val ale = 4 //semillas 
+            val ale = 3 //semillas 
             val tablero = generarTablero(col*fil)
-            val posicion = 1
+            val posicion = 0
             val casillasLibres = comprobarCasillasLibres(tablero, tablero.length)
             val vectorAleatorios= generarVector(casillasLibres, ale) //creamos un vector con 4 posiciones libres del tablero
-            val tableroJuego = colocarSemillas(tablero, ale, vectorAleatorios, posicion)
+            val tableroJuego = colocarTablero(tablero, vectorAleatorios, ale)
             imprimirTablero(tableroJuego, col-1, fil)
-            imprimirTablero(vectorAleatorios, 4, 1)
+            imprimirTablero(vectorAleatorios, ale, 1)
         }
           else if(nivel == 3){
             val fil = 14
             val col = 14
-            val ale = 6 //semillas 
+            val ale = 5 //semillas 
             val tablero = generarTablero(col*fil)
-            imprimirTablero(tablero, col-1, fil)
+            val posicion = 0
+            val casillasLibres = comprobarCasillasLibres(tablero, tablero.length)
+            val vectorAleatorios= generarVector(casillasLibres, ale) //creamos un vector con 4 posiciones libres del tablero
+            val tableroJuego = colocarTablero(tablero, vectorAleatorios, ale)
+            imprimirTablero(tableroJuego, col-1, fil)
+            imprimirTablero(vectorAleatorios, ale, 1)
         }else if(nivel == 4){
             val fil = 17
             val col = 17
-            val ale = 6 //semillas 
+            val ale = 5 //semillas 
             val tablero = generarTablero(col*fil)
-            imprimirTablero(tablero, col-1, fil)
+            val posicion = 0
+            val casillasLibres = comprobarCasillasLibres(tablero, tablero.length)
+            val vectorAleatorios= generarVector(casillasLibres, ale) //creamos un vector con 4 posiciones libres del tablero
+            val tableroJuego = colocarTablero(tablero, vectorAleatorios, ale)
+            imprimirTablero(tableroJuego, col-1, fil)
+            imprimirTablero(vectorAleatorios, ale, 1)
         }else{
             System.err.println("Error, por favor, escoja un nivel válido")
             inicioJuego(vidas)
@@ -94,7 +110,7 @@ object Juego {
        
        def generarVector(posicionesLibres: List[Int], semillas: Int): List[Int] ={
            
-		        if (semillas < -1) Nil
+		        if (semillas < 0) Nil
 		        else{
 		          val aleatorio = (Math.random()*posicionesLibres.length)
               val indiceCasillasLibres = buscarIndice(posicionesLibres, aleatorio.toInt)
@@ -104,28 +120,32 @@ object Juego {
 		        
        }
        
-       def colocarSemillas(l:List[Int], semillas:Int, posicionesLibres: List[Int], posicionActual:Int): List[Int] = {
-          print(posicionesLibres.head, "posiciones libres \n")
-   			  print(posicionActual, "posicion \n")
-   			  if (l.length == 0 || semillas==0) l
-   			 
-   			  else{
-   				    if(posicionActual == posicionesLibres.head ) {
+      def colocarTablero(tablero: List[Int], posiciones: List[Int], semillas:Int) :List[Int]={
+           val posicionActual = 1
+           val semillasaux = semillas -1
+           val tableroaux = tablero
+           if(semillas<0) tablero
+           else{
+              val semillaaux = semillas-1
+              colocarTablero(colocarSemillas(tableroaux, posiciones, posicionActual), posiciones.tail, semillaaux)
+           }
+      
+       }
+       def colocarSemillas(l:List[Int], semillas:List[Int], posicionActual:Int): List[Int] = {
+   				 if(l.length == 0) l
+   				 else{
+           if(posicionActual == semillas.head) {
   					    val a = 2
-  					    val semillas2 = semillas -1
   					    val posicionNueva = posicionActual + 1
-  					    
-  					    List(a):::colocarSemillas(l.tail, semillas2, posicionesLibres.tail, posicionNueva)
+  					    List(a):::colocarSemillas(l.tail, semillas, posicionNueva)
   					      
-   				    }else{
-   				      
+   				    }else {
    				      val posicionNueva = posicionActual + 1
-   					    List(l.head):::colocarSemillas(l.tail, semillas, posicionesLibres, posicionNueva)
+   				      List(l.head):::colocarSemillas(l.tail, semillas, posicionNueva)
    				    }
-   			
+   				 }
    			}
-   }
-       
+   
     def comprobarCasillasLibres(l:List[Int], posicion:Int) : List[Int] ={
       val nuevaposicion = posicion-1
       if (l.length == 0) l
