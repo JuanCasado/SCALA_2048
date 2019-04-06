@@ -70,7 +70,8 @@ object main extends App {
         val piezas_nuevas = crearPiezasNuevas (t_sin_ceros, cols)
         val nuevo_puntos = sumaTablero(piezas_nuevas) + puntos
         val nuevo_tablero = ensamblarTablero (t_sin_ceros, piezas_nuevas)
-        val postTablero = postMover (nuevo_tablero, cols, movimiento)
+        val nuevo_t_sin_ceros = quitarCeros (nuevo_tablero, cols)
+        val postTablero = postMover (nuevo_t_sin_ceros, cols, movimiento)
         gameLoop (nivel, vidas, nuevo_puntos, puntos_totales, colocarSemillas(postTablero, getEmptyPositions(postTablero), nivel))
       }
     }
