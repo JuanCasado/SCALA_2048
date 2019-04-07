@@ -3,7 +3,87 @@ package main
 import java.util.Random
 import java.util.Scanner
 
+import scala.swing._
+import scala.swing.event._
+
 object main extends App {
+  abstract class Tablero extends MainFrame{
+    def updateContent (tablero : List[Int]);
+    /*Pide al usuario un número dentro de un rango Con una q se puede terminar la partida con antelación*/
+    def getNumber (text : String, min : Int, max : Int) : Int = {
+      print (text + " [ " + min + ", " + max +" ] : ")
+      try{
+        val input = reader.nextInt();
+        if (isBetween(input, min,max)) input
+        else {print("ERROR ENTRADA FUERA DE RANGO\n"); getNumber (text, min, max)}
+      }catch  {case _: Throwable => { if (reader.nextLine()=="q") throw new Exception 
+                                      else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}
+    }
+  }
+  def frame (tablero : List[Int], cols:Int) : Tablero = new Tablero {
+    def getColor (value : Int) : java.awt.Color = value match {
+      case 0 => java.awt.Color.black
+      case 2 => java.awt.Color.gray
+      case 4 => java.awt.Color.green
+      case 8 => java.awt.Color.blue
+      case 16 => java.awt.Color.red
+      case 32 => java.awt.Color.orange
+      case 64 => java.awt.Color.magenta
+      case 128 => java.awt.Color.cyan
+      case 256 => java.awt.Color.pink
+      case 512 => java.awt.Color.lightGray 
+      case 1024 => java.awt.Color.yellow
+      case 2048 => java.awt.Color.darkGray 
+      case 4096 => java.awt.Color.red
+      case 8192 => java.awt.Color.yellow
+      case _ => java.awt.Color.black
+    }
+    def createContent (tablero : List[Int]) : List[Label] = tablero match {
+      case Nil => Nil
+      case  _  => val label = new Label(""+tablero.head)
+                  label.foreground = getColor (tablero.head)
+                  label::createContent (tablero.tail)
+    }
+    def updateContent (tablero : List[Int]) ={
+      def _updateContent (tablero : List[Int], content :List[Label]) : Int = tablero match {
+        case Nil => 0
+        case  _  => content.head.text=""+tablero.head
+                    content.head.foreground = getColor (tablero.head)
+                    _updateContent(tablero.tail, content.tail)
+      }
+      _updateContent (tablero, content)
+    }
+    val header = new Label(">>>>>>           2048           <<<<<<") 
+    val points = new Label ("Points: 0")
+    val sep = new Label ("             ")
+    val table = new Table (cols,cols)
+    val acc_points = new Label ("AccPoints: 0")
+    val content :List[Label] = createContent(tablero)
+    def panel(cols : Int)  = new BoxPanel (Orientation.Vertical) {
+      contents += new BoxPanel(Orientation.Horizontal){
+        contents += header
+      }
+      contents += new GridPanel(cols,cols){
+        def applyContent (con : List[Label]) : Int = con match {
+          case Nil => 0
+          case  _  => contents+=con.head; applyContent (con.tail)
+        }
+        applyContent (content)
+      }
+      contents += new BoxPanel (Orientation.Horizontal) {
+        contents += points
+        contents+= sep
+        contents += acc_points
+      }
+    }
+    title = "2048"
+    contents = panel(cols)
+    centerOnScreen
+    size = new Dimension(cols * 27 + 140, cols * 22 + 90)
+    minimumSize = size
+    maximumSize = size
+  }
+  
   val reader = new Scanner(System.in)
   setupJuego()
   /* Se piden los datos iniciales al usuario para poder comenzar el juego*/
@@ -11,8 +91,11 @@ object main extends App {
     print("\n>>>>>>           2048           <<<<<<\n")
     println("--------------------------------------------")
     val vidas= 3  
-    val nivel = getNumber("Seleccione nivel", 1 , 4)
-    gameLoop (nivel, vidas, 0, 0, crearTablero (nivel))
+    val nivel = 1//Tablero.getNumber("Seleccione nivel", 1 , 4)
+    val tablero = crearTablero (nivel)
+    val window = frame (tablero, getCols(nivel))
+    window.visible = true
+    gameLoop (nivel, vidas, 0, 0, tablero, window)
   }
   /*Se obtienen las pisiciones libres del tablero, en ellas podremos colocar piezas aleatorias nuevas*/
   def getEmptyPositions (tablero:List[Int]) : List[Int] = {
@@ -52,20 +135,20 @@ object main extends App {
   }
   
   /*Comienza una partida nueva*/
-  def iniciarJuegoNuevo (nivel:Int, vidas : Int, puntos : Int) : Int = {
+  def iniciarJuegoNuevo (nivel:Int, vidas : Int, puntos : Int, window : Tablero) : Int = {
     printPuntos("Puntos Acumulados", puntos)
     vidas match {
     case 1 => print("Te quedaste sin vidas!!!"); 0
-    case _ => if(getNumber("Desea jugar de nuevo?", 0, 1) == 1){gameLoop(nivel, vidas-1, 0, puntos, crearTablero(nivel))}
+    case _ => if(window.getNumber("Desea jugar de nuevo?", 0, 1) == 1){gameLoop(nivel, vidas-1, 0, puntos, crearTablero(nivel), window)}
               else {print("Gracias por jugar, adios!!"); 0}
   }}
   /*Bucle principal del juego*/
-  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int]) : Int = {
+  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Tablero) : Int = {
     def continue (tablero : List[Int], nivel : Int) : Int = {
-      if (isFull(tablero)) iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales)
+      if (isFull(tablero)) iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window)
       else {try{
         val cols = getCols(nivel)
-        val movimiento = getNumber("Realizar movimiento", 1, 4)          //Acción del usuario
+        val movimiento = window.getNumber("Realizar movimiento", 1, 4)          //Acción del usuario
         val preTablero = preMover (tablero, cols, movimiento)            //Se rota el tablero de ser necesario según el movimiento elegido
         val t_sin_ceros = quitarCeros (preTablero, cols)                 //Se eliminan los ceros del tablero
         val piezas_nuevas = crearPiezasNuevas (t_sin_ceros, cols)        //Se crea una lista con las piezas nuevas que aparecerán en el tablero
@@ -73,11 +156,12 @@ object main extends App {
         val nuevo_tablero = ensamblarTablero (t_sin_ceros, piezas_nuevas)//Se colocan las piezas sobre le tablero y se borran las que no hagan falta
         val nuevo_t_sin_ceros = quitarCeros (nuevo_tablero, cols)        //Se vuelven a quitar los ceros
         val postTablero = postMover (nuevo_t_sin_ceros, cols, movimiento)//Se deja el tablero en su rotación original
-        gameLoop (nivel, vidas, nuevo_puntos, puntos_totales, colocarSemillas(postTablero, getEmptyPositions(postTablero), nivel))
-      }catch {case _: Throwable => iniciarJuegoNuevo (nivel, vidas, puntos)}}}//Si nos introducen una q para salir antes
+        gameLoop (nivel, vidas, nuevo_puntos, puntos_totales, colocarSemillas(postTablero, getEmptyPositions(postTablero), nivel), window)
+      }catch {case _: Throwable => iniciarJuegoNuevo (nivel, vidas, puntos, window)}}}//Si nos introducen una q para salir antes
     //Se muestra el tablero
     printPuntos("Puntos Totales", puntos)
     printTablero(tablero, getCols(nivel))
+    window.updateContent(tablero)
     continue(tablero, nivel)
   }
   /*Imprime los puntos que se han sonseguido*/
@@ -297,17 +381,6 @@ object main extends App {
   		val valor = buscarIndice(valores, posicion_valor)            //Valor se una semilla
 		  val siguientes_semillas = eliminarIndice (semillas, posicion_semilla)
 		  colocarSemillas(ponerSemilla(tablero, semilla, valor), siguientes_semillas, cantidad-1, valores)}
-  }
-   
-  /*Pide al usuario un número dentro de un rango Con una q se puede terminar la partida con antelación*/
-  def getNumber (text : String, min : Int, max : Int) : Int = {
-    print (text + " [ " + min + ", " + max +" ] : ")
-    try{
-      val input = reader.nextInt();
-      if (isBetween(input, min,max)) input
-      else {print("ERROR ENTRADA FUERA DE RANGO\n"); getNumber (text, min, max)}
-    }catch  {case _: Throwable => { if (reader.nextLine()=="q") throw new Exception 
-                                    else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}
   }
   /*Comprueba si un número está dentro del rango*/
   def isBetween (input : Int, min : Int, max : Int) : Boolean = (input >= min) && (input <= max)
