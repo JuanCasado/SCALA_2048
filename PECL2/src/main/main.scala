@@ -1,174 +1,81 @@
 package main
 
-import java.util.Random
-import java.util.Scanner
-
+import scala.util.Random
 import scala.swing._
 import scala.swing.event._
+import java.util.concurrent.ArrayBlockingQueue
 
 object main extends App {
-  abstract class Tablero extends MainFrame{
-    def updateContent (tablero : List[Int]);
-    /*Pide al usuario un número dentro de un rango Con una q se puede terminar la partida con antelación*/
-    def getNumber (text : String, min : Int, max : Int) : Int = {
-      print (text + " [ " + min + ", " + max +" ] : ")
-      try{
-        val input = reader.nextInt();
-        if (isBetween(input, min,max)) input
-        else {print("ERROR ENTRADA FUERA DE RANGO\n"); getNumber (text, min, max)}
-      }catch  {case _: Throwable => { if (reader.nextLine()=="q") throw new Exception 
-                                      else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}
-    }
-  }
-  def frame (tablero : List[Int], cols:Int) : Tablero = new Tablero {
-    def getColor (value : Int) : java.awt.Color = value match {
-      case 0 => java.awt.Color.black
-      case 2 => java.awt.Color.gray
-      case 4 => java.awt.Color.green
-      case 8 => java.awt.Color.blue
-      case 16 => java.awt.Color.red
-      case 32 => java.awt.Color.orange
-      case 64 => java.awt.Color.magenta
-      case 128 => java.awt.Color.cyan
-      case 256 => java.awt.Color.pink
-      case 512 => java.awt.Color.lightGray 
-      case 1024 => java.awt.Color.yellow
-      case 2048 => java.awt.Color.darkGray 
-      case 4096 => java.awt.Color.red
-      case 8192 => java.awt.Color.yellow
-      case _ => java.awt.Color.black
-    }
-    def createContent (tablero : List[Int]) : List[Label] = tablero match {
-      case Nil => Nil
-      case  _  => val label = new Label(""+tablero.head)
-                  label.foreground = getColor (tablero.head)
-                  label::createContent (tablero.tail)
-    }
-    def updateContent (tablero : List[Int]) ={
-      def _updateContent (tablero : List[Int], content :List[Label]) : Int = tablero match {
-        case Nil => 0
-        case  _  => content.head.text=""+tablero.head
-                    content.head.foreground = getColor (tablero.head)
-                    _updateContent(tablero.tail, content.tail)
-      }
-      _updateContent (tablero, content)
-    }
-    val header = new Label(">>>>>>           2048           <<<<<<") 
-    val points = new Label ("Points: 0")
-    val sep = new Label ("             ")
-    val table = new Table (cols,cols)
-    val acc_points = new Label ("AccPoints: 0")
-    val content :List[Label] = createContent(tablero)
-    def panel(cols : Int)  = new BoxPanel (Orientation.Vertical) {
-      contents += new BoxPanel(Orientation.Horizontal){
-        contents += header
-      }
-      contents += new GridPanel(cols,cols){
-        def applyContent (con : List[Label]) : Int = con match {
-          case Nil => 0
-          case  _  => contents+=con.head; applyContent (con.tail)
-        }
-        applyContent (content)
-      }
-      contents += new BoxPanel (Orientation.Horizontal) {
-        contents += points
-        contents+= sep
-        contents += acc_points
-      }
-    }
-    title = "2048"
-    contents = panel(cols)
-    centerOnScreen
-    size = new Dimension(cols * 27 + 140, cols * 22 + 90)
-    minimumSize = size
-    maximumSize = size
-  }
-  
-  val reader = new Scanner(System.in)
-  setupJuego()
   /* Se piden los datos iniciales al usuario para poder comenzar el juego*/
   def setupJuego() = {
     print("\n>>>>>>           2048           <<<<<<\n")
     println("--------------------------------------------")
-    val vidas= 3  
-    val nivel = 1//Tablero.getNumber("Seleccione nivel", 1 , 4)
+    val vidas= 3
+    val nivel = getNumber("Seleccione nivel", 1 , 4)
+    val window_input = (getNumber("Interfaz grafica?", 0 , 1)==1)//CONFIGURA DE DÓNDE SE TOMARÁ LA ENTRADA TRUE->PANTALLA FALSE->TERMINAL
     val tablero = crearTablero (nivel)
     val window = frame (tablero, getCols(nivel))
-    window.visible = true
-    gameLoop (nivel, vidas, 0, 0, tablero, window)
+    if (window_input) window.visible=true else window.dispose() 
+    gameLoop (nivel, vidas, 0, 0, tablero, window, window_input, false)
   }
-  /*Se obtienen las pisiciones libres del tablero, en ellas podremos colocar piezas aleatorias nuevas*/
-  def getEmptyPositions (tablero:List[Int]) : List[Int] = {
-   def _getEmptyPositions (tablero:List[Int], position:Int) : List[Int] =  tablero match {
-     case Nil => Nil
-     case _ => tablero.head match {
-       case 0 => _getEmptyPositions(tablero.tail, position+1):::List(position)
-       case _ => _getEmptyPositions(tablero.tail, position+1)
-     }
-    }
-   _getEmptyPositions (tablero, 1)
-  }
-  /*Muestra el tablero por pantallla*/
-  def printTablero (tablero:List[Int], cols : Int) = {
-    /*Da formato a cada elemento de la matriz*/
-    def _format (element : Int, x : Int, y : Int, cols : Int) : String = x match {
-      case  0   => "\n" +_buildString("-",20*cols) + "|\t" + y + "\t|\t" + element + "\t|"
-      case  _   =>  "\t" + element + "\t|"
-    }
-    /*Crea una cadena con el contenido del tablero*/
-    def _printTablero (tablero:List[Int], cols : Int) : String = tablero match {
-      case Nil => "\n" + _buildString("-",21*cols)
-      case  _  => _format (tablero.head, (tablero.length%cols), (cols + 1 - tablero.length/cols).toInt, cols) +
-                  _printTablero(tablero.tail,cols)
-    }
-    /*Crea una lista de número de 1 a n*/
-    def _listNumbers (cols : Int) : String = cols match {
-      case 0 => "|\t"
-      case _ => _listNumbers(cols - 1) + "\t|\t" + cols.toString
-    }
-    /*Crea una cadena nueva a partir de la cadena pasada repetida n veces*/
-    def _buildString (text : String, ammount : Int) : String = ammount match{
-      case 0 => text + "\n"
-      case _ => text+_buildString (text, ammount-1)
-    }
-    print(_buildString("-",21*cols) +  _listNumbers(cols) + "\t|" + _printTablero(tablero, cols))
-  }
-  
-  /*Comienza una partida nueva*/
-  def iniciarJuegoNuevo (nivel:Int, vidas : Int, puntos : Int, window : Tablero) : Int = {
-    printPuntos("Puntos Acumulados", puntos)
-    vidas match {
-    case 1 => print("Te quedaste sin vidas!!!"); 0
-    case _ => if(window.getNumber("Desea jugar de nuevo?", 0, 1) == 1){gameLoop(nivel, vidas-1, 0, puntos, crearTablero(nivel), window)}
-              else {print("Gracias por jugar, adios!!"); 0}
-  }}
   /*Bucle principal del juego*/
-  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Tablero) : Int = {
+  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Tablero, window_input : Boolean, skyp_update : Boolean) : Int = {
+    /*Comienza una partida nueva*/
+    def iniciarJuegoNuevo (nivel:Int, vidas : Int, puntos : Int, window : Tablero, window_input : Boolean) : Int = {
+      if (window_input) window.setAccPoints(puntos) else printNumero("Puntos Acumulados", puntos)
+      if (window_input) window.setLives(vidas) else printNumero("Vidas", vidas)
+      vidas match {
+      case 1 => print("Te quedaste sin vidas!!!"); 0
+      case _ => if(getNumber("Desea jugar de nuevo?", 0, 1) == 1){gameLoop(nivel, vidas-1, 0, puntos, crearTablero(nivel), window, window_input, false)}
+                else {print("Gracias por jugar, adios!!"); 0}
+    }}
     def continue (tablero : List[Int], nivel : Int) : Int = {
-      if (isFull(tablero)) iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window)
+      val cols = getCols(nivel)
+      if (isFull(tablero, cols)){iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window, window_input)}
       else {try{
-        val cols = getCols(nivel)
-        val movimiento = window.getNumber("Realizar movimiento", 1, 4)          //Acción del usuario
-        val preTablero = preMover (tablero, cols, movimiento)            //Se rota el tablero de ser necesario según el movimiento elegido
-        val t_sin_ceros = quitarCeros (preTablero, cols)                 //Se eliminan los ceros del tablero
-        val piezas_nuevas = crearPiezasNuevas (t_sin_ceros, cols)        //Se crea una lista con las piezas nuevas que aparecerán en el tablero
-        val nuevo_puntos = sumaTablero(piezas_nuevas) + puntos           //Se suman las piezas nuevas para obetener los puntos
-        val nuevo_tablero = ensamblarTablero (t_sin_ceros, piezas_nuevas)//Se colocan las piezas sobre le tablero y se borran las que no hagan falta
-        val nuevo_t_sin_ceros = quitarCeros (nuevo_tablero, cols)        //Se vuelven a quitar los ceros
-        val postTablero = postMover (nuevo_t_sin_ceros, cols, movimiento)//Se deja el tablero en su rotación original
-        gameLoop (nivel, vidas, nuevo_puntos, puntos_totales, colocarSemillas(postTablero, getEmptyPositions(postTablero), nivel), window)
-      }catch {case _: Throwable => iniciarJuegoNuevo (nivel, vidas, puntos, window)}}}//Si nos introducen una q para salir antes
+        if (window_input) window.setRecomendation(mejorMoviento(tablero, cols)) else print ("Mejor movimento: " + mejorMoviento(tablero, cols) +"\n")
+        val movimiento = if (window_input) window.queue.take else getNumber("Realizar movimiento", 1, 4)    //Acción del usuario
+        val (nuevo_tablero, nuevo_puntos) = mover (tablero, cols, movimiento)
+        val skyp_update = mismoTablero(tablero,nuevo_tablero)
+        if (skyp_update) {if (window_input) window.setRecomendation("DIRECCION IMPOSIBLE") else print("DIRECCION IMPOSIBLE \n")}
+        val tablero_final = if (skyp_update) nuevo_tablero else colocarSemillas(nuevo_tablero, getEmptyPositions(nuevo_tablero), nivel)
+        gameLoop (nivel, vidas, nuevo_puntos+puntos, puntos_totales, tablero_final, window, window_input, skyp_update)
+      }catch {case _:IllegalArgumentException => print("WTF");iniciarJuegoNuevo (nivel, vidas, puntos, window, window_input)}}}//Si nos introducen una q para salir antes
     //Se muestra el tablero
-    printPuntos("Puntos Totales", puntos)
-    printTablero(tablero, getCols(nivel))
-    window.updateContent(tablero)
+    if (!skyp_update){
+      if (window_input) window.setPoints(puntos) else printNumero("Puntos Totales", puntos)
+      if (window_input) window.updateContent(tablero) else printTablero(tablero, getCols(nivel))}
     continue(tablero, nivel)
   }
-  /*Imprime los puntos que se han sonseguido*/
-  def printPuntos (text : String ,puntos : Int) = {
-    print("-----------------------\n")
-    print(text +": " + puntos + "\n")
-    print("-----------------------\n")
+  /*Realiza un moviento devolviendo la tupla de el nuevo tablero con los puntos que se han hagando*/
+  def mover (tablero : List [Int], cols : Int, movement : Int) : (List[Int], Int) = {
+    /*Rota la matriz hasta la posición nesecaria para realizar el movimento en el sentido adecuado*/
+    def preMover (tablero : List[Int], cols : Int, movimiento : Int) : List [Int] = movimiento match {
+      case 1 => {tablero}
+      case 2 => {flip(tablero, cols)}
+      case 3 => {rotate90(tablero,cols)}
+      case 4 => {rotate90(rotate90(rotate90(tablero,cols),cols),cols)}
+    }
+    /*Rota la matriz hasta dejarla en su posición original*/
+    def postMover (tablero : List[Int], cols : Int, movimiento : Int) : List [Int] = movimiento match {
+      case 1 => {tablero}
+      case 2 => {flip(tablero, cols)}
+      case 3 => {rotate90(rotate90(rotate90(tablero,cols),cols),cols)}
+      case 4 => {rotate90(tablero,cols)}
+    }
+    /*Suma todas las piezas de un tablero, se usa para contar los puntos*/
+    def sumaTablero (tablero : List[Int]) : Int = tablero match {
+      case Nil => 0
+      case head::tail => head+sumaTablero(tail)
+    }
+    val preTablero = preMover (tablero, cols, movement)              //Se rota el tablero de ser necesario según el movimiento elegido
+    val t_sin_ceros = quitarCeros (preTablero, cols)                 //Se eliminan los ceros del tablero
+    val piezas_nuevas = crearPiezasNuevas (t_sin_ceros, cols)        //Se crea una lista con las piezas nuevas que aparecerán en el tablero
+    val nuevo_puntos = sumaTablero(piezas_nuevas)                    //Se suman las piezas nuevas para obetener los puntos
+    val nuevo_tablero = ensamblarTablero (t_sin_ceros, piezas_nuevas)//Se colocan las piezas sobre le tablero y se borran las que no hagan falta
+    val nuevo_t_sin_ceros = quitarCeros (nuevo_tablero, cols)        //Se vuelven a quitar los ceros
+    val postTablero = postMover (nuevo_t_sin_ceros, cols, movement)  //Se deja el tablero en su rotación original
+    (postTablero, nuevo_puntos)
   }
   /*El lablero es girado en espejo respecto a su eje vertical*/
   def flip (tablero : List[Int], cols : Int) : List [Int] ={
@@ -238,24 +145,7 @@ object main extends App {
     }
     val facke_cols = scala.math.pow(2,log2(cols)).toInt
     val zeros = _fillZeros (tablero, cols, facke_cols-cols)
-    printTablero(zeros, facke_cols)
-    printTablero(rotate(zeros, facke_cols), facke_cols)
-    printTablero(quitaZeros(rotate(zeros, facke_cols), cols, zeros.length, facke_cols), cols)
     quitaZeros(rotate(zeros, facke_cols), cols, zeros.length, facke_cols)
-  }
-  /*Rota la matriz hasta la posición nesecaria para realizar el movimento en el sentido adecuado*/
-  def preMover (tablero : List[Int], cols : Int, movimiento : Int) : List [Int] = movimiento match {
-    case 1 => {tablero}
-    case 2 => {flip(tablero, cols)}
-    case 3 => {rotate90(tablero,cols)}
-    case 4 => {rotate90(rotate90(rotate90(tablero,cols),cols),cols)}
-  }
-  /*Rota la matriz hasta dejarla en su posición original*/
-  def postMover (tablero : List[Int], cols : Int, movimiento : Int) : List [Int] = movimiento match {
-    case 1 => {tablero}
-    case 2 => {flip(tablero, cols)}
-    case 3 => {rotate90(rotate90(rotate90(tablero,cols),cols),cols)}
-    case 4 => {rotate90(tablero,cols)}
   }
   /*Crea una lista con las piezas nuevas que aparecerán al realizar el movimento en su posición correspondiente*/
   def crearPiezasNuevas (tablero : List[Int], cols : Int) : List[Int] = {
@@ -293,6 +183,8 @@ object main extends App {
   def _finFila (length : Int, cols : Int) : Boolean = ((length-1) % cols) == 0
   /*Dice si una pieza está al inicio de una fila de la matriz representada por la lista*/
   def _inicioFila (length : Int, cols : Int) : Boolean = ((length) % cols) == 0
+  /*Comprueba si un número está dentro del rango*/
+  def isBetween (input : Int, min : Int, max : Int) : Boolean = (input >= min) && (input <= max)
   /*Añade las piezas nuevas al tablero sin añadir aquellas que deban desaparecer, de este modo se contrulle el movimento
     Quedan huecos que deberán eliminarse con otra pasada de quitarCeros*/
   def ensamblarTablero (tablero : List[Int], nuevas_piezas : List[Int]) : List[Int] = {
@@ -314,37 +206,59 @@ object main extends App {
     if (mismoTablero( tablero, tablero_sin_ceros)) tablero
     else _quitarCeros (tablero_sin_ceros, cols,  0)
   }
+  /*Dice el mejor movimento ccon una predicción de un nivel de profundidad*/
+  def mejorMoviento (tablero : List[Int], cols : Int) : Int = {
+    def _mejorMoviento (tablero : List[Int], cols : Int, movement : Int, max : Int, indice : Int) : Int = {
+      if (movement > 4) indice
+      else {
+        val (_,puntos) = mover (tablero, cols, movement)
+        if (puntos > max) _mejorMoviento (tablero, cols, movement+1, max, movement)
+        else _mejorMoviento (tablero, cols, movement+1, max, indice)
+    }}
+    val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
+    if(mejor_moviento<4) (Math.random()*4).toInt + 1
+    else mejor_moviento 
+  }
   /*Dice si dos tablero son el mismo*/
   def mismoTablero (tablero : List[Int], tablero_anterior : List[Int]) : Boolean = {
     if ((tablero == Nil) || (tablero_anterior == Nil)) true
     else if (tablero.head == tablero_anterior.head) mismoTablero(tablero.tail, tablero_anterior.tail)
     else false
   }
-  /*Indica si un tablero está lleno de piezas*/
-  def isFull (tablero : List[Int]) : Boolean = tablero match{
-    case Nil => true
-    case head::tail => if (head == 0) false else isFull(tail)
-  }
-  /*Suma todas las piezas de un tablero, se usa para contar los puntos*/
-  def sumaTablero (tablero : List[Int]) : Int = tablero match {
-    case Nil => 0
-    case head::tail => head+sumaTablero(tail)
+  /*Indica si en un tablero no se pueden hacer mas movietos validos*/
+  def isFull (tablero : List[Int], cols : Int) : Boolean = {
+    def _isFull (tablero : List[Int], movement : Int, cols : Int) : Boolean = {
+      if (movement > 4) true
+      else  {val (tablero_nuevo,_) = mover (tablero, cols, movement)
+          if (mismoTablero(tablero,tablero_nuevo)) _isFull (tablero, movement+1, cols)
+          else false
+    }}
+    _isFull (tablero, 1, cols)
   }
   /*Crea una lista de ceros con el tamaño indicado*/
   def generarLista(col:Int): List[Int] = col match{
       case 0 => Nil
       case _ => (0)::generarLista(col-1)
-    }
+   }
   /*Crea una tablero inicial nuevo con las caracetrísticas que le correspondan según el nivel elegido*/
   def crearTablero (nivel:Int) : List[Int] = {
     val cols = getCols (nivel)
-    val cantidad_semilla = getCantidadSemillas (nivel)
-    val lista_semillas = getListaSemillas (nivel)
     val tablero = generarLista(cols*cols)
-    colocarSemillas(tablero, getEmptyPositions(tablero), cantidad_semilla, lista_semillas)
+    colocarSemillas(tablero, getEmptyPositions(tablero), nivel)
+  }
+  /*Se obtienen las pisiciones libres del tablero, en ellas podremos colocar piezas aleatorias nuevas*/
+  def getEmptyPositions (tablero:List[Int]) : List[Int] = {
+   def _getEmptyPositions (tablero:List[Int], position:Int) : List[Int] =  tablero match {
+     case Nil => Nil
+     case _ => tablero.head match {
+       case 0 => _getEmptyPositions(tablero.tail, position+1):::List(position)
+       case _ => _getEmptyPositions(tablero.tail, position+1)
+     }
+    }
+   _getEmptyPositions (tablero, 1)
   }
   /*Pone tantas semillas aleatorias como se indique sienpre que quede hueco en el tablero*/
-  def colocarSemillas(tablero:List[Int], semillas:List[Int], cantidad : Int, valores:List[Int] = List(2,4)): List[Int] = {
+  def colocarSemillas(tablero:List[Int], semillas:List[Int], nivel: Int): List[Int] = {
     /*Selecciona un índice vacío donde colocar la semilla*/
     def buscarIndice(l:List[Int], posicion: Int) : Int = {
       def _buscarIndice(l:List[Int], posicion: Int) : Int = l match{
@@ -372,18 +286,198 @@ object main extends App {
           else l.head::_ponerIndice(l.tail, posicion, valor)}
       _ponerIndice(l, l.length - posicion + 1, valor)
     }
-		if (semillas.length == 0) tablero
-		if (cantidad == 0) tablero
-		else {
-		  val posicion_semilla = (Math.random()*semillas.length).toInt //Posición aleatoria de una posición libre para colocar una semilla
-  		val posicion_valor = (Math.random()*valores.length).toInt    //Posición aleatoria para encontrar valor de la semilla de la semilla
-  		val semilla = buscarIndice(semillas, posicion_semilla)       //Posición libre se una semilla
-  		val valor = buscarIndice(valores, posicion_valor)            //Valor se una semilla
-		  val siguientes_semillas = eliminarIndice (semillas, posicion_semilla)
-		  colocarSemillas(ponerSemilla(tablero, semilla, valor), siguientes_semillas, cantidad-1, valores)}
+    def _colocarSemillas(tablero:List[Int], semillas:List[Int], nivel: Int, restantes : Int): List[Int] = {
+  		if (semillas == Nil) tablero
+  		if (restantes == 0) tablero
+  		else {
+  		  val valores = getListaSemillas(nivel)
+  		  val posicion_semilla = (Math.random()*semillas.length).toInt //Posición aleatoria de una posición libre para colocar una semilla
+    		val posicion_valor = (Math.random()*valores.length).toInt    //Posición aleatoria para encontrar valor de la semilla de la semilla
+    		val semilla = buscarIndice(semillas, posicion_semilla)       //Posición libre se una semilla
+    		val valor = buscarIndice(valores, posicion_valor)            //Valor se una semilla
+  		  val siguientes_semillas = eliminarIndice (semillas, posicion_semilla)
+  		  _colocarSemillas(ponerSemilla(tablero, semilla, valor), siguientes_semillas, nivel, restantes-1)}
+    }	
+    _colocarSemillas(tablero, semillas, nivel, getCantidadSemillas(nivel))
   }
-  /*Comprueba si un número está dentro del rango*/
-  def isBetween (input : Int, min : Int, max : Int) : Boolean = (input >= min) && (input <= max)
+  /*Muestra el tablero por pantallla*/
+  def printTablero (tablero:List[Int], cols : Int) = {
+    /*Da color a los caracteres mostrados por consola*/
+    def color (value : Int) : String = {
+      def _getColor (value : Int) : String = value match {
+        case 0 => scala.Console.WHITE
+        case 2 => scala.Console.BLACK
+        case 4 => scala.Console.BLACK_B
+        case 8 => scala.Console.GREEN
+        case 16 => scala.Console.BLUE
+        case 32 => scala.Console.RED
+        case 64 => scala.Console.YELLOW
+        case 128 => scala.Console.MAGENTA
+        case 256 => scala.Console.CYAN
+        case 512 => scala.Console.MAGENTA_B
+        case 1024 => scala.Console.BLUE_B
+        case 2048 => scala.Console.YELLOW_B
+        case 4096 => scala.Console.GREEN_B
+        case 8192 => scala.Console.YELLOW_B
+        case _ => scala.Console.WHITE
+      }
+      //_getColor(value) + " "+value+ " " + scala.Console.BLACK //FUNCIONA SI SE EJECUTA EN LINUX/MAC FUERA DE UN IDE!!!
+      value+""
+    }
+    /*Da formato a cada elemento de la matriz*/
+    def _format (element : Int, x : Int, y : Int, cols : Int) : String = x match {
+      case  0   => "\n" +_buildString("-",20*cols) + "|\t" + y + "\t|\t" + color(element) + "\t|"
+      case  _   =>  "\t" + color(element) + "\t|"
+    }
+    /*Crea una cadena con el contenido del tablero*/
+    def _printTablero (tablero:List[Int], cols : Int) : String = tablero match {
+      case Nil => "\n" + _buildString("-",21*cols)
+      case  _  => _format (tablero.head, (tablero.length%cols), (cols + 1 - tablero.length/cols).toInt, cols) +
+                  _printTablero(tablero.tail,cols)
+    }
+    /*Crea una lista de número de 1 a n*/
+    def _listNumbers (cols : Int) : String = cols match {
+      case 0 => "|\t"
+      case _ => _listNumbers(cols - 1) + "\t|\t" + cols.toString
+    }
+    /*Crea una cadena nueva a partir de la cadena pasada repetida n veces*/
+    def _buildString (text : String, ammount : Int) : String = ammount match{
+      case 0 => text + "\n"
+      case _ => text+_buildString (text, ammount-1)
+    }
+    print(_buildString("-",21*cols) +  _listNumbers(cols) + "\t|" + _printTablero(tablero, cols))
+  }
+  /*Imprime los puntos que se han sonseguido*/
+  def printNumero (text : String ,puntos : Int) = {
+    print("-----------------------\n")
+    print(text +": " + puntos + "\n")
+    print("-----------------------\n")
+  }
+  /*Pide al usuario un número dentro de un rango Con una q se puede terminar la partida con antelación*/
+  def getNumber (text : String, min : Int, max : Int) : Int = {
+    print (text + " [ " + min + ", " + max +" ] : ")
+    try{
+      val input = scala.io.StdIn.readInt();
+      if (isBetween(input, min,max)) input
+      else {print("ERROR ENTRADA FUERA DE RANGO\n"); getNumber (text, min, max)}
+    }catch  {case _: Throwable => { if (scala.io.StdIn.readLine()=="q") throw new IllegalArgumentException("EXIT RECIVED");
+                                    else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}
+  }
+  /*Define la clase que nos permite controlar la interfar, la clase solo actúa como interfaz para la función frame que
+  Realmente es el objeto que tiene la implementacion, (En Scala Funciones == Objetos)*/
+  abstract class Tablero extends MainFrame{
+    //Se utiliza para leer la entrada de la interfaz evitando polling pero sin cambiar el código como en caso de utilizar listeners
+    val queue = new ArrayBlockingQueue[Int](1)
+    def updateContent (tablero : List[Int]);  //MUESTRA EL TABLERO
+    def setPoints (points : Int);             //MUESTRA LOS PUNTOS
+    def setAccPoints (acc_points : Int);      //MUESTRA LOS PUNTOS ACUMULADOS
+    def setRecomendation (movement : Int);    //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
+    def setRecomendation (text : String);     //CAMPO GENERAL
+    def setLives (lives : Int);               //MUESTRA LAS VIDAS
+    def disable ();                           //INHABILITA LOS BOTONES
+  }
+  def frame (tablero : List[Int], cols:Int) : Tablero = new Tablero {
+    /*Colorea los label se la interfaz según el valor que contengan*/
+    def getColor (value : Int) : java.awt.Color = value match {
+      case 0 => java.awt.Color.white
+      case 2 => java.awt.Color.black
+      case 4 => java.awt.Color.gray
+      case 8 => java.awt.Color.green
+      case 16 => java.awt.Color.blue
+      case 32 => java.awt.Color.red
+      case 64 => java.awt.Color.orange
+      case 128 => java.awt.Color.magenta
+      case 256 => java.awt.Color.cyan
+      case 512 => java.awt.Color.pink
+      case 1024 => java.awt.Color.lightGray
+      case 2048 => java.awt.Color.yellow
+      case 4096 => java.awt.Color.darkGray
+      case 8192 => java.awt.Color.yellow
+      case _ => java.awt.Color.black
+    }
+    /*CREA EL TABLERO DEL TAMAÑO QUE SEA NECESARIO*/
+    def createContent (tablero : List[Int]) : List[Label] = tablero match {
+      case Nil => Nil
+      case  _  => val label = new Label(""+tablero.head)
+                  label.foreground = getColor (tablero.head)
+                  label::createContent (tablero.tail)
+    }
+    //MUESTRA EL TABLERO
+    def updateContent (tablero : List[Int]) = {
+      def _updateContent (tablero : List[Int], content :List[Label]) : Int = tablero match {
+        case Nil => 0
+        case  _  => content.head.text=""+tablero.head
+                    content.head.foreground = getColor (tablero.head)
+                    _updateContent(tablero.tail, content.tail)
+      }
+      _updateContent (tablero, content)
+    }
+    def setPoints (value : Int) = points.text="Points: "+value                                               //MUESTRA LOS PUNTOS
+    def setAccPoints (value : Int) = acc_points.text="AccPoints: "+value                                     //MUESTRA LOS PUNTOS ACUMULADOS
+    def setRecomendation (movement : Int) = recomendations.text = "Mejor moviento: "+movement                //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
+    def setRecomendation (text : String) = direccion_imposible.text                                          //CAMPO GENERAL
+    def setLives (value : Int) = lives.text = "Vidas: "+value                                                //MUESTRA LAS VIDAS
+    val header = new Label(">>>>>>           2048           <<<<<<") 
+    val points = new Label ("Points: 0")
+    val sep = new Label ("             ")
+    val recomendations = new Label ("Seleccione nivel")
+    val table = new Table (cols,cols)
+    val acc_points = new Label ("AccPoints: 0")
+    val content :List[Label] = createContent(tablero)
+    val lives = new Label("Vidas: 3")
+    val direccion_imposible = new Label("")
+    val up = new Button("UP")
+    val down = new Button("DOWN")
+    val left = new Button("LEFT")
+    val right = new Button("RIGHT")
+    def disable = {up.enabled = false;down.enabled = false;left.enabled = false;right.enabled = false;}     //INHABILITA LOS BOTONES
+    /*Coloca el contenido para crear la interfaz y define los listeners de los botones*/
+    def panel(cols : Int)  = new BoxPanel (Orientation.Horizontal){
+      contents += new BoxPanel (Orientation.Vertical) {
+        contents += new BoxPanel(Orientation.Horizontal){
+          contents += header}
+        contents += new GridPanel(cols,cols){
+          def applyContent (con : List[Label]) : Int = con match {
+            case Nil => 0
+            case  _  => contents+=con.head; applyContent (con.tail)
+          }
+          applyContent (content)}
+        contents += new BoxPanel (Orientation.Horizontal) {
+          contents += points
+          contents+= sep
+          contents += acc_points}}
+      contents += new BoxPanel (Orientation.Vertical){
+        contents += new BoxPanel (Orientation.Horizontal){
+          contents += lives}
+        contents += new BoxPanel (Orientation.Horizontal){
+          listenTo(up)
+          contents += up
+          reactions+={case ButtonClicked(up) => {if (queue.size == 0) queue.put(3)}}}
+        contents += new BoxPanel (Orientation.Horizontal){
+          contents += new BoxPanel (Orientation.Horizontal){
+            contents += left
+            listenTo(left)
+            reactions+={case ButtonClicked(left) => {if (queue.size == 0) queue.put(1)}}}
+          contents += new BoxPanel (Orientation.Horizontal){
+            contents += right
+            listenTo(right)
+            reactions+={case ButtonClicked(right) => {if (queue.size == 0) queue.put(2)}}}}
+        contents += new BoxPanel (Orientation.Horizontal){
+          contents += down
+          listenTo(down)
+          reactions+={case ButtonClicked(down) => {if (queue.size == 0) queue.put(4)}}}
+        contents += new BoxPanel (Orientation.Horizontal){
+          contents += recomendations}
+        contents += new BoxPanel (Orientation.Horizontal){
+          contents += direccion_imposible
+    }}}
+    title = "2048"
+    contents = panel(cols)
+    centerOnScreen
+    size = new Dimension(cols * 27 + 340, cols * 22 + 90)
+    minimumSize = size
+    maximumSize = size
+  }
   /*Columnas de tablero para cada nivel*/
   def getCols (nivel : Int) : Int = nivel match {
     case 1 => 4
@@ -405,4 +499,6 @@ object main extends App {
     case 3 => List(2, 4, 8)
     case 4 => List(2, 4, 8)
   }
+  //Inicia el juego
+  setupJuego()
 }
