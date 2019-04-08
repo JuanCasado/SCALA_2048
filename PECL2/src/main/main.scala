@@ -33,24 +33,21 @@ object main extends App {
       case _ => if(getNumber("Desea jugar de nuevo?", 0, 1) == 1){gameLoop(nivel, vidas-1, 0, puntos, crearTablero(nivel), window, window_input, ia, false)}
                 else {print("Gracias por jugar, adios!!"); 0}
     }}
-    def continue (tablero : List[Int], nivel : Int) : Int = {
-      val cols = getCols(nivel)
-      if (isFull(tablero, cols)){iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window, window_input, ia)}
-      else {try{
-        val mejor_movimiento = mejorMoviento(tablero, cols)
-        if (window_input) window.setRecomendation(mejor_movimiento) else print ("Mejor movimento: " + mejor_movimiento +"\n")
-        val movimiento = if (ia) {mejor_movimiento} else {if (window_input) window.queue.take else getNumber("Realizar movimiento", 1, 4)}                                                                 //PARA MOVIMIENTOS AUTOMÁTICOS
-        val (nuevo_tablero, nuevo_puntos) = mover (tablero, cols, movimiento)
-        val skyp_update = mismoTablero(tablero,nuevo_tablero)
-        if (skyp_update) {if (window_input) window.setRecomendation("DIRECCION IMPOSIBLE") else print("DIRECCION IMPOSIBLE \n")}
-        val tablero_final = if (skyp_update) nuevo_tablero else colocarSemillas(nuevo_tablero, getEmptyPositions(nuevo_tablero), nivel)
-        gameLoop (nivel, vidas, nuevo_puntos+puntos, puntos_totales, tablero_final, window, window_input, ia, skyp_update)
-      }catch {case _:IllegalArgumentException => print("WTF");iniciarJuegoNuevo (nivel, vidas, puntos, window, window_input, ia)}}}//Si nos introducen una q para salir antes
-    //Se muestra el tablero
-    if (!skyp_update){
+    if (!skyp_update){//Se muestra el tablero
       if (window_input) window.setPoints(puntos) else printNumero("Puntos Totales", puntos)
       if (window_input) window.updateContent(tablero) else printTablero(tablero, getCols(nivel))}
-    continue(tablero, nivel)
+    val cols = getCols(nivel)
+    if (isFull(tablero, cols)){iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window, window_input, ia)}
+    else {try{
+      val mejor_movimiento = mejorMoviento(tablero, cols)
+      if (window_input) window.setRecomendation(mejor_movimiento) else print ("Mejor movimento: " + mejor_movimiento +"\n")
+      val movimiento = if (ia) {mejor_movimiento} else {if (window_input) window.queue.take else getNumber("Realizar movimiento", 1, 4)}                                                                 //PARA MOVIMIENTOS AUTOMÁTICOS
+      val (nuevo_tablero, nuevo_puntos) = mover (tablero, cols, movimiento)
+      val skyp_update = mismoTablero(tablero,nuevo_tablero)
+      if (skyp_update) {if (window_input) window.setRecomendation("DIRECCION IMPOSIBLE") else print("DIRECCION IMPOSIBLE \n")}
+      val tablero_final = if (skyp_update) nuevo_tablero else colocarSemillas(nuevo_tablero, getEmptyPositions(nuevo_tablero), nivel)
+      gameLoop (nivel, vidas, nuevo_puntos+puntos, puntos_totales, tablero_final, window, window_input, ia, skyp_update)
+    }catch {case _:IllegalArgumentException => iniciarJuegoNuevo (nivel, vidas, puntos, window, window_input, ia)}}//Si nos introducen una q para salir antes
   }
   /*Realiza un moviento devolviendo la tupla de el nuevo tablero con los puntos que se han hagando*/
   def mover (tablero : List [Int], cols : Int, movement : Int) : (List[Int], Int) = {
@@ -154,8 +151,7 @@ object main extends App {
         _quitaZeros(tablero, cols, fake_len, facke_cols, 1)
     }
     val facke_cols = scala.math.pow(2,log2(cols)).toInt
-    val zeros = _fillZeros (tablero, cols, facke_cols-cols)
-    quitaZeros(rotate(zeros, facke_cols), cols, zeros.length, facke_cols)
+    quitaZeros(rotate(_fillZeros (tablero, cols, facke_cols-cols), facke_cols), cols, facke_cols*facke_cols, facke_cols)
   }
   /*Crea una lista con las piezas nuevas que aparecerán al realizar el movimento en su posición correspondiente*/
   def crearPiezasNuevas (tablero : List[Int], cols : Int) : List[Int] = {
@@ -222,13 +218,14 @@ object main extends App {
       if (movement > 4) indice
       else {
         val (_,puntos) = mover (tablero, cols, movement)
-        if (puntos > max) _mejorMoviento (tablero, cols, movement+1, max, movement)
+        if (puntos > max) _mejorMoviento (tablero, cols, movement+1, puntos, movement)
         else _mejorMoviento (tablero, cols, movement+1, max, indice)
     }}
-    val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
-    if(mejor_moviento<4) (Math.random()*4).toInt + 1
+    if ((Math.random()*30).toInt == 15)(Math.random()*4).toInt + 1
+    else{val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
+    if(mejor_moviento<1) (Math.random()*4).toInt + 1
     else mejor_moviento 
-  }
+  }}
   /*Dice si dos tablero son el mismo*/
   def mismoTablero (tablero : List[Int], tablero_anterior : List[Int]) : Boolean = {
     if ((tablero == Nil) || (tablero_anterior == Nil)) true
@@ -246,9 +243,25 @@ object main extends App {
     _isFull (tablero, 1, cols)
   }
   /*Crea una lista de ceros con el tamaño indicado*/
-  def generarLista(col:Int): List[Int] = col match{
-      case 0 => Nil
-      case _ => (0)::generarLista(col-1)
+  def generarLista(col:Int): List[Int] = col match {
+      case  0 => Nil
+      case 17 => List(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-17)
+      case 16 => List(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-16)
+      case 15 => List(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-15)
+      case 14 => List(0,0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-14)
+      case 13 => List(0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-13)
+      case 12 => List(0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-12)
+      case 11 => List(0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-11)
+      case 10 => List(0,0,0,0,0,0,0,0,0,0):::generarLista(col-10)
+      case  9 => List(0,0,0,0,0,0,0,0,0):::generarLista(col-9)
+      case  8 => List(0,0,0,0,0,0,0,0):::generarLista(col-8)
+      case  7 => List(0,0,0,0,0,0,0):::generarLista(col-7)
+      case  6 => List(0,0,0,0,0,0):::generarLista(col-6)
+      case  5 => List(0,0,0,0,0):::generarLista(col-5)
+      case  4 => List(0,0,0,0):::generarLista(col-4)
+      case  3 => List(0,0,0):::generarLista(col-3)
+      case  2 => List(0,0):::generarLista(col-2)
+      case  _ => (0)::generarLista(col-1)
    }
   /*Crea una tablero inicial nuevo con las caracetrísticas que le correspondan según el nivel elegido*/
   def crearTablero (nivel:Int) : List[Int] = {
