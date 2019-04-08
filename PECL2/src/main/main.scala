@@ -14,41 +14,38 @@ object main extends App {
     print("\n>>>>>>           2048           <<<<<<\n")
     println("--------------------------------------------")
     val vidas= 3
-    //saveNumber(3)
-    //print(retrieveNumber())
     val nivel = getNumber("Seleccione nivel", 1 , 4)
     val window_input = (getNumber("Interfaz grafica?", 0 , 1)==1)//CONFIGURA DE DÓNDE SE TOMARÁ LA ENTRADA TRUE->PANTALLA FALSE->TERMINAL
     val ia = (getNumber("Movientos automáticos?", 0 , 1)==1)
     val tablero = crearTablero (nivel)
     val window = frame (tablero, getCols(nivel))
     if (window_input) window.visible=true else window.dispose() 
-    gameLoop (nivel, vidas, 0, 0, tablero, window, window_input, false)
+    gameLoop (nivel, vidas, 0, 0, tablero, window, window_input, ia, false)
   }
   /*Bucle principal del juego*/
-  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Tablero, window_input : Boolean, skyp_update : Boolean) : Int = {
+  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Tablero, window_input : Boolean, ia : Boolean, skyp_update : Boolean) : Int = {
     /*Comienza una partida nueva*/
-    def iniciarJuegoNuevo (nivel:Int, vidas : Int, puntos : Int, window : Tablero, window_input : Boolean) : Int = {
+    def iniciarJuegoNuevo (nivel:Int, vidas : Int, puntos : Int, window : Tablero, ia : Boolean, window_input : Boolean) : Int = {
       if (window_input) window.setAccPoints(puntos) else printNumero("Puntos Acumulados", puntos)
       if (window_input) window.setLives(vidas) else printNumero("Vidas", vidas)
       vidas match {
       case 1 => print("Te quedaste sin vidas!!!"); 0
-      case _ => if(getNumber("Desea jugar de nuevo?", 0, 1) == 1){gameLoop(nivel, vidas-1, 0, puntos, crearTablero(nivel), window, window_input, false)}
+      case _ => if(getNumber("Desea jugar de nuevo?", 0, 1) == 1){gameLoop(nivel, vidas-1, 0, puntos, crearTablero(nivel), window, window_input, ia, false)}
                 else {print("Gracias por jugar, adios!!"); 0}
     }}
     def continue (tablero : List[Int], nivel : Int) : Int = {
       val cols = getCols(nivel)
-      if (isFull(tablero, cols)){iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window, window_input)}
+      if (isFull(tablero, cols)){iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window, window_input, ia)}
       else {try{
         val mejor_movimiento = mejorMoviento(tablero, cols)
         if (window_input) window.setRecomendation(mejor_movimiento) else print ("Mejor movimento: " + mejor_movimiento +"\n")
-        //val movimiento = if (window_input) window.queue.take else getNumber("Realizar movimiento", 1, 4)    //Acción del usuario
-        val movimiento = mejor_movimiento                                                                 //PARA MOVIMIENTOS AUTOMÁTICOS
+        val movimiento = if (ia) {mejor_movimiento} else {if (window_input) window.queue.take else getNumber("Realizar movimiento", 1, 4)}                                                                 //PARA MOVIMIENTOS AUTOMÁTICOS
         val (nuevo_tablero, nuevo_puntos) = mover (tablero, cols, movimiento)
         val skyp_update = mismoTablero(tablero,nuevo_tablero)
         if (skyp_update) {if (window_input) window.setRecomendation("DIRECCION IMPOSIBLE") else print("DIRECCION IMPOSIBLE \n")}
         val tablero_final = if (skyp_update) nuevo_tablero else colocarSemillas(nuevo_tablero, getEmptyPositions(nuevo_tablero), nivel)
-        gameLoop (nivel, vidas, nuevo_puntos+puntos, puntos_totales, tablero_final, window, window_input, skyp_update)
-      }catch {case _:IllegalArgumentException => print("WTF");iniciarJuegoNuevo (nivel, vidas, puntos, window, window_input)}}}//Si nos introducen una q para salir antes
+        gameLoop (nivel, vidas, nuevo_puntos+puntos, puntos_totales, tablero_final, window, window_input, ia, skyp_update)
+      }catch {case _:IllegalArgumentException => print("WTF");iniciarJuegoNuevo (nivel, vidas, puntos, window, window_input, ia)}}}//Si nos introducen una q para salir antes
     //Se muestra el tablero
     if (!skyp_update){
       if (window_input) window.setPoints(puntos) else printNumero("Puntos Totales", puntos)
@@ -62,13 +59,13 @@ object main extends App {
       case 1 => {tablero}
       case 2 => {flip(tablero, cols)}
       case 3 => {rotate90(tablero,cols)}
-      case 4 => {rotate90(rotate90(rotate90(tablero,cols),cols),cols)}
+      case 4 => {rotate90(tablero,cols, 3)}
     }
     /*Rota la matriz hasta dejarla en su posición original*/
     def postMover (tablero : List[Int], cols : Int, movimiento : Int) : List [Int] = movimiento match {
       case 1 => {tablero}
       case 2 => {flip(tablero, cols)}
-      case 3 => {rotate90(rotate90(rotate90(tablero,cols),cols),cols)}
+      case 3 => {rotate90(tablero,cols, 3)}
       case 4 => {rotate90(tablero,cols)}
     }
     /*Suma todas las piezas de un tablero, se usa para contar los puntos*/
@@ -98,6 +95,11 @@ object main extends App {
       case true => reverse(tablero, cols):::flip(tablero.tail, cols)
       case false  => flip(tablero.tail, cols)
   }}}
+  /*Rota la matriz rep veces*/
+  def rotate90 (tablero : List[Int], cols : Int, rep : Int) : List[Int] = rep match {
+    case 0 => tablero
+    case _ => rotate90 (rotate90(tablero, cols), cols, rep - 1)
+  }
   /*Se rota el tablero 90grados a la izquierda*/
   def rotate90 (tablero : List[Int], cols : Int) : List [Int] = {
     /*Logaritmos en base dos para saber el tamaño final del tablero rotado*/
@@ -216,7 +218,7 @@ object main extends App {
   }
   /*Dice el mejor movimento ccon una predicción de un nivel de profundidad*/
   def mejorMoviento (tablero : List[Int], cols : Int) : Int = {
-    /*def _mejorMoviento (tablero : List[Int], cols : Int, movement : Int, max : Int, indice : Int) : Int = {
+    def _mejorMoviento (tablero : List[Int], cols : Int, movement : Int, max : Int, indice : Int) : Int = {
       if (movement > 4) indice
       else {
         val (_,puntos) = mover (tablero, cols, movement)
@@ -225,8 +227,7 @@ object main extends App {
     }}
     val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
     if(mejor_moviento<4) (Math.random()*4).toInt + 1
-    else mejor_moviento */
-    (Math.random()*4).toInt + 1
+    else mejor_moviento 
   }
   /*Dice si dos tablero son el mismo*/
   def mismoTablero (tablero : List[Int], tablero_anterior : List[Int]) : Boolean = {
