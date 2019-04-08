@@ -56,17 +56,17 @@ object main extends App {
   def mover (tablero : List [Int], cols : Int, movement : Int) : (List[Int], Int) = {
     /*Rota la matriz hasta la posición nesecaria para realizar el movimento en el sentido adecuado*/
     def preMover (tablero : List[Int], cols : Int, movimiento : Int) : List [Int] = movimiento match {
-      case 1 => {tablero}
-      case 2 => {flip(tablero, cols)}
-      case 3 => {rotate90(tablero,cols)}
-      case 4 => {rotate90(tablero,cols, 3)}
+      case 1 => {tablero}                    //LEFT
+      case 2 => {flip(tablero, cols)}        //RIGHT
+      case 3 => {rotate90(tablero,cols)}     //UP
+      case 4 => {rotate90(tablero,cols, 3)}  //DOWN
     }
     /*Rota la matriz hasta dejarla en su posición original*/
     def postMover (tablero : List[Int], cols : Int, movimiento : Int) : List [Int] = movimiento match {
-      case 1 => {tablero}
-      case 2 => {flip(tablero, cols)}
-      case 3 => {rotate90(tablero,cols, 3)}
-      case 4 => {rotate90(tablero,cols)}
+      case 1 => {tablero}                    //LEFT
+      case 2 => {flip(tablero, cols)}        //RIGHT
+      case 3 => {rotate90(tablero,cols, 3)}  //UP
+      case 4 => {rotate90(tablero,cols)}     //DOWN
     }
     /*Suma todas las piezas de un tablero, se usa para contar los puntos*/
     def sumaTablero (tablero : List[Int]) : Int = tablero match {
@@ -433,7 +433,12 @@ object main extends App {
     }
     def setPoints (value : Int) = points.text="Points: "+value                                               //MUESTRA LOS PUNTOS
     def setAccPoints (value : Int) = acc_points.text="AccPoints: "+value                                     //MUESTRA LOS PUNTOS ACUMULADOS
-    def setRecomendation (movement : Int) = recomendations.text = "Mejor moviento: "+movement                //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
+    def setRecomendation (movement : Int) = movement match {                                                 //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
+      case 1 => recomendations.text = "Mejor moviento: "+"LEFT"
+      case 2 => recomendations.text = "Mejor moviento: "+"RIGHT"
+      case 3 => recomendations.text = "Mejor moviento: "+"UP"
+      case 4 => recomendations.text = "Mejor moviento: "+"DOWN"
+    }                
     def setRecomendation (text : String) = direccion_imposible.text                                          //CAMPO GENERAL
     def setLives (value : Int) = lives.text = "Vidas: "+value                                                //MUESTRA LAS VIDAS
     val header = new Label(">>>>>>           2048           <<<<<<") 
