@@ -4,6 +4,9 @@ import scala.util.Random
 import scala.swing._
 import scala.swing.event._
 import java.util.concurrent.ArrayBlockingQueue
+import java.io.File
+import java.io.PrintWriter
+import scala.io.Source
 
 object main extends App {
   /* Se piden los datos iniciales al usuario para poder comenzar el juego*/
@@ -11,8 +14,11 @@ object main extends App {
     print("\n>>>>>>           2048           <<<<<<\n")
     println("--------------------------------------------")
     val vidas= 3
+    //saveNumber(3)
+    //print(retrieveNumber())
     val nivel = getNumber("Seleccione nivel", 1 , 4)
     val window_input = (getNumber("Interfaz grafica?", 0 , 1)==1)//CONFIGURA DE DÓNDE SE TOMARÁ LA ENTRADA TRUE->PANTALLA FALSE->TERMINAL
+    val ia = (getNumber("Movientos automáticos?", 0 , 1)==1)
     val tablero = crearTablero (nivel)
     val window = frame (tablero, getCols(nivel))
     if (window_input) window.visible=true else window.dispose() 
@@ -33,8 +39,10 @@ object main extends App {
       val cols = getCols(nivel)
       if (isFull(tablero, cols)){iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window, window_input)}
       else {try{
-        if (window_input) window.setRecomendation(mejorMoviento(tablero, cols)) else print ("Mejor movimento: " + mejorMoviento(tablero, cols) +"\n")
-        val movimiento = if (window_input) window.queue.take else getNumber("Realizar movimiento", 1, 4)    //Acción del usuario
+        val mejor_movimiento = mejorMoviento(tablero, cols)
+        if (window_input) window.setRecomendation(mejor_movimiento) else print ("Mejor movimento: " + mejor_movimiento +"\n")
+        //val movimiento = if (window_input) window.queue.take else getNumber("Realizar movimiento", 1, 4)    //Acción del usuario
+        val movimiento = mejor_movimiento                                                                 //PARA MOVIMIENTOS AUTOMÁTICOS
         val (nuevo_tablero, nuevo_puntos) = mover (tablero, cols, movimiento)
         val skyp_update = mismoTablero(tablero,nuevo_tablero)
         if (skyp_update) {if (window_input) window.setRecomendation("DIRECCION IMPOSIBLE") else print("DIRECCION IMPOSIBLE \n")}
@@ -208,7 +216,7 @@ object main extends App {
   }
   /*Dice el mejor movimento ccon una predicción de un nivel de profundidad*/
   def mejorMoviento (tablero : List[Int], cols : Int) : Int = {
-    def _mejorMoviento (tablero : List[Int], cols : Int, movement : Int, max : Int, indice : Int) : Int = {
+    /*def _mejorMoviento (tablero : List[Int], cols : Int, movement : Int, max : Int, indice : Int) : Int = {
       if (movement > 4) indice
       else {
         val (_,puntos) = mover (tablero, cols, movement)
@@ -217,7 +225,8 @@ object main extends App {
     }}
     val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
     if(mejor_moviento<4) (Math.random()*4).toInt + 1
-    else mejor_moviento 
+    else mejor_moviento */
+    (Math.random()*4).toInt + 1
   }
   /*Dice si dos tablero son el mismo*/
   def mismoTablero (tablero : List[Int], tablero_anterior : List[Int]) : Boolean = {
@@ -347,6 +356,17 @@ object main extends App {
     }
     print(_buildString("-",21*cols) +  _listNumbers(cols) + "\t|" + _printTablero(tablero, cols))
   }
+  /*Guarda un número en un archivo de texto*/
+  def saveNumber (value : Int, file : String = "./.score") = {
+    val writer = new PrintWriter(new File(file))
+    writer.write(value.toString)
+    writer.close()
+  }
+  /*Guarda un número en un archivo de texto*/
+  def retrieveNumber (file : String = "./.score") : Int = {
+    try{Source.fromFile(file).mkString.toInt}
+    catch {case e: Throwable => print(e);0}
+  }
   /*Imprime los puntos que se han sonseguido*/
   def printNumero (text : String ,puntos : Int) = {
     print("-----------------------\n")
@@ -356,13 +376,11 @@ object main extends App {
   /*Pide al usuario un número dentro de un rango Con una q se puede terminar la partida con antelación*/
   def getNumber (text : String, min : Int, max : Int) : Int = {
     print (text + " [ " + min + ", " + max +" ] : ")
-    try{
-      val input = scala.io.StdIn.readInt();
+    try{val input = scala.io.StdIn.readInt();
       if (isBetween(input, min,max)) input
       else {print("ERROR ENTRADA FUERA DE RANGO\n"); getNumber (text, min, max)}
     }catch  {case _: Throwable => { if (scala.io.StdIn.readLine()=="q") throw new IllegalArgumentException("EXIT RECIVED");
-                                    else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}
-  }
+                                    else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}}
   /*Define la clase que nos permite controlar la interfar, la clase solo actúa como interfaz para la función frame que
   Realmente es el objeto que tiene la implementacion, (En Scala Funciones == Objetos)*/
   abstract class Tablero extends MainFrame{
