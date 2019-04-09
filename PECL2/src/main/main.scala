@@ -11,49 +11,52 @@ import scala.io.Source
 object main extends App {
   /* Se piden los datos iniciales al usuario para poder comenzar el juego*/
   def setupJuego() = {
-    def gameStrater (nivel : Int, vidas : Int, puntos_totales : Int, tablero : List[Int], window : Tablero, window_input : Boolean, ia : Boolean) : Int = {
-      val (_puntos_totales, _vidas, continue) = gameLoop (nivel, vidas, 0, puntos_totales, tablero, window, window_input, ia, false)
-      if (continue) gameStrater (nivel, _vidas, _puntos_totales, tablero, window, window_input, ia)
+    def gameStrater (nivel : Int, vidas : Int, puntos_totales : Int, tablero : List[Int], window : Interfaz, ia : Boolean) : Int = {
+      val (_puntos_totales, _vidas, continue) = gameLoop (nivel, vidas, 0, puntos_totales, tablero, window, ia, false)
+      if (continue) gameStrater (nivel, _vidas, _puntos_totales, tablero, window, ia)
       else 0
+    }
+    def createInterface (tablero : List[Int], nivel : Int) : Interfaz = {
+      if (getNumber("Interfaz grafica?", 0 , 1)==1) {
+        val window = frame(tablero, getCols(nivel));window.visible=true;window}
+      else console(getCols(nivel))
     }
     print("\n>>>>>>           2048           <<<<<<\n")
     println("--------------------------------------------")
     val vidas= 2
     val nivel = getNumber("Seleccione nivel", 1 , 4)
-    val window_input = (getNumber("Interfaz grafica?", 0 , 1)==1)//CONFIGURA DE DÓNDE SE TOMARÁ LA ENTRADA TRUE->PANTALLA FALSE->TERMINAL
     val ia = (getNumber("Movientos automáticos?", 0 , 1)==1)
     val tablero = crearTablero (nivel)
-    val window = frame (tablero, getCols(nivel))
-    if (window_input) window.visible=true else window.dispose()
-    gameStrater (nivel, vidas, 0, tablero, window, window_input, ia)
+    val window = createInterface(tablero, nivel)
+    gameStrater (nivel, vidas, 0, tablero, window, ia)
     }
   /*Bucle principal del juego*/
-  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Tablero, window_input : Boolean, ia : Boolean, skyp_update : Boolean) : (Int, Int, Boolean) = {
+  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Interfaz, ia : Boolean, skyp_update : Boolean) : (Int, Int, Boolean) = {
     /*Fin de juego*/
-    def finJuego (nivel:Int, vidas : Int, puntos : Int, window : Tablero, ia : Boolean, window_input : Boolean) : (Int, Int, Boolean) = {
-      if (window_input) window.setAccPoints(puntos) else printNumero("Puntos Acumulados", puntos)
-      if (window_input) window.setLives(vidas) else printNumero("Vidas", vidas)
+    def finJuego (nivel:Int, vidas : Int, puntos : Int, window : Interfaz, ia : Boolean) : (Int, Int, Boolean) = {
+      window.setAccPoints(puntos)
+      window.setLives(vidas)
       vidas match {
       case 0 => print("Te quedaste sin vidas!!!"); (puntos_totales+puntos, vidas -1, false)
-      case _ => if(getNumber("Desea jugar de nuevo?", 0, 1) == 1) (puntos_totales+puntos, vidas -1, true)
+      case _ => if(window.getOption("Desea jugar de nuevo?") == 1) (puntos_totales+puntos, vidas -1, true)
                 else {print("Gracias por jugar, adios!!"); (puntos_totales+puntos, vidas -1, false)}
     }}
     if (!skyp_update){//Se muestra el tablero
-      if (window_input) window.setPoints(puntos) else printNumero("Puntos Totales", puntos)
-      if (window_input) window.updateContent(tablero) else printTablero(tablero, getCols(nivel))}
+      window.setPoints(puntos)
+      window.updateContent(tablero)}
     val cols = getCols(nivel)
-    if (isFull(tablero, cols)){finJuego(nivel, vidas, puntos + puntos_totales, window, window_input, ia)}//Se comprueba si el juego ha terminado
+    if (isFull(tablero, cols)){finJuego(nivel, vidas, puntos + puntos_totales, window, ia)}//Se comprueba si el juego ha terminado
     else {try{
       val mejor_movimiento = mejorMoviento(tablero, cols)
-      if (window_input) window.setRecomendation(mejor_movimiento) else print ("Mejor movimento: " + mejor_movimiento +"\n")
-      val movimiento = if (ia) {mejor_movimiento} else {if (window_input) window.queue.take else getNumber("Realizar movimiento", 1, 4)}                                                                 //PARA MOVIMIENTOS AUTOMÁTICOS
+      window.setRecomendation(mejor_movimiento)
+      val movimiento = if (ia) {mejor_movimiento} else {window.getMovement()}                                                                 //PARA MOVIMIENTOS AUTOMÁTICOS
       val (nuevo_tablero, nuevo_puntos) = mover (tablero, cols, movimiento)
       val skyp_update = mismoTablero(tablero,nuevo_tablero)
-      if (skyp_update) {if (window_input) window.setRecomendation("DIRECCION IMPOSIBLE") else print("DIRECCION IMPOSIBLE \n")}
-      else {if (window_input)window.setRecomendation("")}
+      if (skyp_update) {window.setRecomendation("DIRECCION IMPOSIBLE")}
+      else {window.setRecomendation("")}
       val tablero_final = if (skyp_update) nuevo_tablero else colocarSemillas(nuevo_tablero, getEmptyPositions(nuevo_tablero), nivel)
-      gameLoop (nivel, vidas, nuevo_puntos+puntos, puntos_totales, tablero_final, window, window_input, ia, skyp_update)
-    }catch {case _:IllegalArgumentException => finJuego (nivel, vidas, puntos, window, window_input, ia)}}//Si nos introducen una q para salir antes
+      gameLoop (nivel, vidas, nuevo_puntos+puntos, puntos_totales, tablero_final, window, ia, skyp_update)
+    }catch {case _:IllegalArgumentException => finJuego (nivel, vidas, puntos, window, ia)}}//Si nos introducen una q para salir antes
   }
   /*Realiza un moviento devolviendo la tupla de el nuevo tablero con los puntos que se han hagando*/
   def mover (tablero : List [Int], cols : Int, movement : Int) : (List[Int], Int) = {
@@ -386,7 +389,7 @@ object main extends App {
                                     else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}}
   /*Define la clase que nos permite controlar la interfar, la clase solo actúa como interfaz para la función frame que
   Realmente es el objeto que tiene la implementacion, (En Scala Funciones == Objetos)*/
-  abstract trait Tablero extends MainFrame{
+  abstract trait Interfaz extends MainFrame{
     //Se utiliza para leer la entrada de la interfaz evitando polling pero sin cambiar el código como en caso de utilizar listeners
     val queue = new ArrayBlockingQueue[Int](1)
     def updateContent (tablero : List[Int]);  //MUESTRA EL TABLERO
@@ -395,9 +398,22 @@ object main extends App {
     def setRecomendation (movement : Int);    //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
     def setRecomendation (text : String);     //CAMPO GENERAL
     def setLives (lives : Int);               //MUESTRA LAS VIDAS
-    def disable ();                           //INHABILITA LOS BOTONES
+    def getOption (option : String) : Int;    //Retorna una opcion
+    def getMovement () : Int;                 //Retorna un moviento realizado
   }
-  def frame (tablero : List[Int], cols:Int) : Tablero = new Tablero {
+  def console(cols : Int) : Interfaz = new Interfaz {
+    def updateContent (tablero : List[Int]) = printTablero (tablero, cols)           //MUESTRA EL TABLERO
+    def setPoints (points : Int) = printNumero ("Puntos",points)                     //MUESTRA LOS PUNTOS
+    def setAccPoints (acc_points : Int) = printNumero("Puntos acc", acc_points)      //MUESTRA LOS PUNTOS ACUMULADOS
+    def setRecomendation (movement : Int) = println(movementTxt(movement))           //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
+    def setRecomendation (text : String) = println(text)                             //CAMPO GENERAL
+    def setLives (lives : Int) = printNumero("Vidas", lives)                         //MUESTRA LAS VIDAS
+    def getOption (option : String) : Int= getNumber(option, 0, 1)                   //Retorna una opcion
+    def getMovement () : Int= getNumber("Moviento", 1, 4)                            //Retorna un moviento realizado
+  }
+  def frame (tablero : List[Int], cols:Int) : Interfaz = new Interfaz {
+    def getMovement () : Int = queue.take
+    def getOption (option : String) : Int = getNumber (option, 0, 1)
     /*Colorea los label se la interfaz según el valor que contengan*/
     def getColor (value : Int) : java.awt.Color = value match {
       case 0 => java.awt.Color.white
@@ -435,12 +451,7 @@ object main extends App {
     }
     def setPoints (value : Int) = points.text="Points: "+value                                               //MUESTRA LOS PUNTOS
     def setAccPoints (value : Int) = acc_points.text="AccPoints: "+value                                     //MUESTRA LOS PUNTOS ACUMULADOS
-    def setRecomendation (movement : Int) = movement match {                                                 //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
-      case 1 => recomendations.text = "Mejor moviento: "+"LEFT"
-      case 2 => recomendations.text = "Mejor moviento: "+"RIGHT"
-      case 3 => recomendations.text = "Mejor moviento: "+"UP"
-      case 4 => recomendations.text = "Mejor moviento: "+"DOWN"
-    }                
+    def setRecomendation (movement : Int) = recomendations.text = movementTxt(movement)                      //MUESTRA EL MOVIMEINTO RECOMENDADO
     def setRecomendation (value : String) = direccion_imposible.text = value                                 //CAMPO GENERAL
     def setLives (value : Int) = lives.text = "Vidas: "+value                                                //MUESTRA LAS VIDAS
     val header = new Label(">>>>>>           2048           <<<<<<") 
@@ -456,7 +467,6 @@ object main extends App {
     val down = new Button("DOWN")
     val left = new Button("LEFT")
     val right = new Button("RIGHT")
-    def disable = {up.enabled = false;down.enabled = false;left.enabled = false;right.enabled = false;}     //INHABILITA LOS BOTONES
     /*Coloca el contenido para crear la interfaz y define los listeners de los botones*/
     def panel(cols : Int)  = new BoxPanel (Orientation.Horizontal){
       contents += new BoxPanel (Orientation.Vertical) {
@@ -525,6 +535,12 @@ object main extends App {
     case 3 => List(2, 4, 8)
     case 4 => List(2, 4, 8)
   }
+  def movementTxt (movement : Int) = movement match {                                                 //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
+      case 1 => "Mejor moviento: "+"LEFT"
+      case 2 => "Mejor moviento: "+"RIGHT"
+      case 3 => "Mejor moviento: "+"UP"
+      case 4 => "Mejor moviento: "+"DOWN"
+    } 
   //Inicia el juego
   setupJuego()
 }
