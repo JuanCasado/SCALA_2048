@@ -11,33 +11,38 @@ import scala.io.Source
 object main extends App {
   /* Se piden los datos iniciales al usuario para poder comenzar el juego*/
   def setupJuego() = {
+    def gameStrater (nivel : Int, vidas : Int, puntos_totales : Int, tablero : List[Int], window : Tablero, window_input : Boolean, ia : Boolean) : Int = {
+      val (_puntos_totales, _vidas, continue) = gameLoop (nivel, vidas, 0, puntos_totales, tablero, window, window_input, ia, false)
+      if (continue) gameStrater (nivel, _vidas, _puntos_totales, tablero, window, window_input, ia)
+      else 0
+    }
     print("\n>>>>>>           2048           <<<<<<\n")
     println("--------------------------------------------")
-    val vidas= 3
+    val vidas= 2
     val nivel = getNumber("Seleccione nivel", 1 , 4)
     val window_input = (getNumber("Interfaz grafica?", 0 , 1)==1)//CONFIGURA DE DÓNDE SE TOMARÁ LA ENTRADA TRUE->PANTALLA FALSE->TERMINAL
     val ia = (getNumber("Movientos automáticos?", 0 , 1)==1)
     val tablero = crearTablero (nivel)
     val window = frame (tablero, getCols(nivel))
-    if (window_input) window.visible=true else window.dispose() 
-    gameLoop (nivel, vidas, 0, 0, tablero, window, window_input, ia, false)
-  }
+    if (window_input) window.visible=true else window.dispose()
+    gameStrater (nivel, vidas, 0, tablero, window, window_input, ia)
+    }
   /*Bucle principal del juego*/
-  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Tablero, window_input : Boolean, ia : Boolean, skyp_update : Boolean) : Int = {
-    /*Comienza una partida nueva*/
-    def iniciarJuegoNuevo (nivel:Int, vidas : Int, puntos : Int, window : Tablero, ia : Boolean, window_input : Boolean) : Int = {
+  def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Tablero, window_input : Boolean, ia : Boolean, skyp_update : Boolean) : (Int, Int, Boolean) = {
+    /*Fin de juego*/
+    def finJuego (nivel:Int, vidas : Int, puntos : Int, window : Tablero, ia : Boolean, window_input : Boolean) : (Int, Int, Boolean) = {
       if (window_input) window.setAccPoints(puntos) else printNumero("Puntos Acumulados", puntos)
       if (window_input) window.setLives(vidas) else printNumero("Vidas", vidas)
       vidas match {
-      case 1 => print("Te quedaste sin vidas!!!"); 0
-      case _ => if(getNumber("Desea jugar de nuevo?", 0, 1) == 1){gameLoop(nivel, vidas-1, 0, puntos, crearTablero(nivel), window, window_input, ia, false)}
-                else {print("Gracias por jugar, adios!!"); 0}
+      case 0 => print("Te quedaste sin vidas!!!"); (puntos_totales+puntos, vidas -1, false)
+      case _ => if(getNumber("Desea jugar de nuevo?", 0, 1) == 1) (puntos_totales+puntos, vidas -1, true)
+                else {print("Gracias por jugar, adios!!"); (puntos_totales+puntos, vidas -1, false)}
     }}
     if (!skyp_update){//Se muestra el tablero
       if (window_input) window.setPoints(puntos) else printNumero("Puntos Totales", puntos)
       if (window_input) window.updateContent(tablero) else printTablero(tablero, getCols(nivel))}
     val cols = getCols(nivel)
-    if (isFull(tablero, cols)){iniciarJuegoNuevo(nivel, vidas, puntos + puntos_totales, window, window_input, ia)}
+    if (isFull(tablero, cols)){finJuego(nivel, vidas, puntos + puntos_totales, window, window_input, ia)}//Se comprueba si el juego ha terminado
     else {try{
       val mejor_movimiento = mejorMoviento(tablero, cols)
       if (window_input) window.setRecomendation(mejor_movimiento) else print ("Mejor movimento: " + mejor_movimiento +"\n")
@@ -45,9 +50,10 @@ object main extends App {
       val (nuevo_tablero, nuevo_puntos) = mover (tablero, cols, movimiento)
       val skyp_update = mismoTablero(tablero,nuevo_tablero)
       if (skyp_update) {if (window_input) window.setRecomendation("DIRECCION IMPOSIBLE") else print("DIRECCION IMPOSIBLE \n")}
+      else {if (window_input)window.setRecomendation("")}
       val tablero_final = if (skyp_update) nuevo_tablero else colocarSemillas(nuevo_tablero, getEmptyPositions(nuevo_tablero), nivel)
       gameLoop (nivel, vidas, nuevo_puntos+puntos, puntos_totales, tablero_final, window, window_input, ia, skyp_update)
-    }catch {case _:IllegalArgumentException => iniciarJuegoNuevo (nivel, vidas, puntos, window, window_input, ia)}}//Si nos introducen una q para salir antes
+    }catch {case _:IllegalArgumentException => finJuego (nivel, vidas, puntos, window, window_input, ia)}}//Si nos introducen una q para salir antes
   }
   /*Realiza un moviento devolviendo la tupla de el nuevo tablero con los puntos que se han hagando*/
   def mover (tablero : List [Int], cols : Int, movement : Int) : (List[Int], Int) = {
@@ -220,12 +226,12 @@ object main extends App {
         val (_,puntos) = mover (tablero, cols, movement)
         if (puntos > max) _mejorMoviento (tablero, cols, movement+1, puntos, movement)
         else _mejorMoviento (tablero, cols, movement+1, max, indice)
-    }}
-    if ((Math.random()*30).toInt == 15)(Math.random()*4).toInt + 1
-    else{val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
+    }}//EL RUIDO GENERADO POR MOVIMIENTOS ALEATORIOS PUEDE AUMENTAR LA PUNTUACION CONSEGUIDA ENORMEMENTE YA QUE EL LOOKUP ES SOLO DE 1 DE PROFUNDIDAD
+    if ((cols > 5)&&((Math.random()*30).toInt == 15))(Math.random()*4).toInt + 1
+    val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
     if(mejor_moviento<1) (Math.random()*4).toInt + 1
     else mejor_moviento 
-  }}
+  }
   /*Dice si dos tablero son el mismo*/
   def mismoTablero (tablero : List[Int], tablero_anterior : List[Int]) : Boolean = {
     if ((tablero == Nil) || (tablero_anterior == Nil)) true
@@ -243,26 +249,9 @@ object main extends App {
     _isFull (tablero, 1, cols)
   }
   /*Crea una lista de ceros con el tamaño indicado*/
-  def generarLista(col:Int): List[Int] = col match {
-      case  0 => Nil
-      case 17 => List(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-17)
-      case 16 => List(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-16)
-      case 15 => List(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-15)
-      case 14 => List(0,0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-14)
-      case 13 => List(0,0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-13)
-      case 12 => List(0,0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-12)
-      case 11 => List(0,0,0,0,0,0,0,0,0,0,0):::generarLista(col-11)
-      case 10 => List(0,0,0,0,0,0,0,0,0,0):::generarLista(col-10)
-      case  9 => List(0,0,0,0,0,0,0,0,0):::generarLista(col-9)
-      case  8 => List(0,0,0,0,0,0,0,0):::generarLista(col-8)
-      case  7 => List(0,0,0,0,0,0,0):::generarLista(col-7)
-      case  6 => List(0,0,0,0,0,0):::generarLista(col-6)
-      case  5 => List(0,0,0,0,0):::generarLista(col-5)
-      case  4 => List(0,0,0,0):::generarLista(col-4)
-      case  3 => List(0,0,0):::generarLista(col-3)
-      case  2 => List(0,0):::generarLista(col-2)
-      case  _ => (0)::generarLista(col-1)
-   }
+  def generarLista(col:Int): List[Int] = {
+      List.fill(col)(0)
+  }
   /*Crea una tablero inicial nuevo con las caracetrísticas que le correspondan según el nivel elegido*/
   def crearTablero (nivel:Int) : List[Int] = {
     val cols = getCols (nivel)
@@ -397,7 +386,7 @@ object main extends App {
                                     else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}}
   /*Define la clase que nos permite controlar la interfar, la clase solo actúa como interfaz para la función frame que
   Realmente es el objeto que tiene la implementacion, (En Scala Funciones == Objetos)*/
-  abstract class Tablero extends MainFrame{
+  abstract trait Tablero extends MainFrame{
     //Se utiliza para leer la entrada de la interfaz evitando polling pero sin cambiar el código como en caso de utilizar listeners
     val queue = new ArrayBlockingQueue[Int](1)
     def updateContent (tablero : List[Int]);  //MUESTRA EL TABLERO
@@ -452,7 +441,7 @@ object main extends App {
       case 3 => recomendations.text = "Mejor moviento: "+"UP"
       case 4 => recomendations.text = "Mejor moviento: "+"DOWN"
     }                
-    def setRecomendation (text : String) = direccion_imposible.text                                          //CAMPO GENERAL
+    def setRecomendation (value : String) = direccion_imposible.text = value                                 //CAMPO GENERAL
     def setLives (value : Int) = lives.text = "Vidas: "+value                                                //MUESTRA LAS VIDAS
     val header = new Label(">>>>>>           2048           <<<<<<") 
     val points = new Label ("Points: 0")
