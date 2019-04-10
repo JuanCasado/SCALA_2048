@@ -11,9 +11,9 @@ import scala.io.Source
 object main extends App {
   /* Se piden los datos iniciales al usuario para poder comenzar el juego*/
   def setupJuego() = {
-    def gameStrater (nivel : Int, vidas : Int, puntos_totales : Int, tablero : List[Int], window : Interfaz, ia : Boolean) : Int = {
-      val (_puntos_totales, _vidas, continue) = gameLoop (nivel, vidas, 0, puntos_totales, tablero, window, ia, false)
-      if (continue) gameStrater (nivel, _vidas, _puntos_totales, tablero, window, ia)
+    def gameStrater (nivel : Int, vidas : Int, puntos_totales : Int, window : Interfaz, ia : Boolean) : Int = {
+      val (_puntos_totales, _vidas, continue) = gameLoop (nivel, vidas, 0, puntos_totales, crearTablero (nivel), window, ia, false)
+      if (continue) gameStrater (nivel, _vidas, _puntos_totales, window, ia)
       else 0
     }
     def createInterface (tablero : List[Int], nivel : Int) : Interfaz = {
@@ -26,9 +26,8 @@ object main extends App {
     val vidas= 2
     val nivel = getNumber("Seleccione nivel", 1 , 4)
     val ia = (getNumber("Movientos automáticos?", 0 , 1)==1)
-    val tablero = crearTablero (nivel)
-    val window = createInterface(tablero, nivel)
-    gameStrater (nivel, vidas, 0, tablero, window, ia)
+    val window = createInterface(crearTablero (nivel), nivel)
+    gameStrater (nivel, vidas, 0, window, ia)
     }
   /*Bucle principal del juego*/
   def gameLoop (nivel : Int, vidas : Int, puntos : Int, puntos_totales : Int, tablero : List[Int], window : Interfaz, ia : Boolean, skyp_update : Boolean) : (Int, Int, Boolean) = {
@@ -137,9 +136,9 @@ object main extends App {
         join(q2,q4,cols/2):::join(q1,q3,cols/2)
     }
     /*De una lista toma la parte que se correspondería con una fila de una matriz según el número de columnas dado*/
-    def tomarFila (l1 : List[Int], cols : Int) :  List [Int] = cols match{
-      case 1 => List(l1.head)
-      case _ => l1.head::tomarFila (l1.tail, cols-1)
+    def tomarFila (tablero : List[Int], cols : Int) :  List [Int] = cols match{
+      case 1 => List(tablero.head)
+      case _ => tablero.head::tomarFila (tablero.tail, cols-1)
     }
     /*Une dos listas una a continuación de la otra como si fueran dos matrices consecutivas (fila1 de una con fila1 de la otra etc)*/
     def join (l1 : List[Int], l2 : List[Int], cols : Int) : List [Int] = {
@@ -230,11 +229,12 @@ object main extends App {
         if (puntos > max) _mejorMoviento (tablero, cols, movement+1, puntos, movement)
         else _mejorMoviento (tablero, cols, movement+1, max, indice)
     }}//EL RUIDO GENERADO POR MOVIMIENTOS ALEATORIOS PUEDE AUMENTAR LA PUNTUACION CONSEGUIDA ENORMEMENTE YA QUE EL LOOKUP ES SOLO DE 1 DE PROFUNDIDAD
-    if ((cols > 5)&&((Math.random()*30).toInt == 15))(Math.random()*4).toInt + 1
-    val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
-    if(mejor_moviento<1) (Math.random()*4).toInt + 1
-    else mejor_moviento 
-  }
+    if ((cols > 5)&&((Math.random()*30).toInt == 15)) {(Math.random()*4).toInt + 1}
+    else {
+      val mejor_moviento = _mejorMoviento (tablero, cols, 1, 0, 0)
+      if(mejor_moviento<1) (Math.random()*4).toInt + 1
+      else mejor_moviento 
+  }}
   /*Dice si dos tablero son el mismo*/
   def mismoTablero (tablero : List[Int], tablero_anterior : List[Int]) : Boolean = {
     if ((tablero == Nil) || (tablero_anterior == Nil)) true
@@ -390,8 +390,6 @@ object main extends App {
   /*Define la clase que nos permite controlar la interfar, la clase solo actúa como interfaz para la función frame que
   Realmente es el objeto que tiene la implementacion, (En Scala Funciones == Objetos)*/
   abstract trait Interfaz extends MainFrame{
-    //Se utiliza para leer la entrada de la interfaz evitando polling pero sin cambiar el código como en caso de utilizar listeners
-    val queue = new ArrayBlockingQueue[Int](1)
     def updateContent (tablero : List[Int]);  //MUESTRA EL TABLERO
     def setPoints (points : Int);             //MUESTRA LOS PUNTOS
     def setAccPoints (acc_points : Int);      //MUESTRA LOS PUNTOS ACUMULADOS
@@ -412,6 +410,8 @@ object main extends App {
     def getMovement () : Int= getNumber("Moviento", 1, 4)                            //Retorna un moviento realizado
   }
   def frame (tablero : List[Int], cols:Int) : Interfaz = new Interfaz {
+    //Se utiliza para leer la entrada de la interfaz evitando polling pero sin cambiar el código como en caso de utilizar listeners
+    val queue = new ArrayBlockingQueue[Int](1)
     def getMovement () : Int = queue.take
     def getOption (option : String) : Int = getNumber (option, 0, 1)
     /*Colorea los label se la interfaz según el valor que contengan*/
@@ -535,7 +535,7 @@ object main extends App {
     case 3 => List(2, 4, 8)
     case 4 => List(2, 4, 8)
   }
-  def movementTxt (movement : Int) = movement match {                                                 //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
+  def movementTxt (movement : Int) : String = movement match {                                                 //DA RECOMENDACIONES DE MOVIENTO AL USUARIO
       case 1 => "Mejor moviento: "+"LEFT"
       case 2 => "Mejor moviento: "+"RIGHT"
       case 3 => "Mejor moviento: "+"UP"
