@@ -17,8 +17,7 @@ object main extends App {
       else 0
     }
     def createInterface (tablero : List[Int], nivel : Int) : Interfaz = {
-      if (getNumber("Interfaz grafica?", 0 , 1)==1) {
-        val window = frame(tablero, getCols(nivel));window.visible=true;window}
+      if (getNumber("Interfaz grafica?", 0 , 1)==1) {frame(tablero, getCols(nivel))}
       else console(getCols(nivel))
     }
     print("\n>>>>>>           2048           <<<<<<\n")
@@ -389,7 +388,7 @@ object main extends App {
                                     else print("ERROR ENTRADA INVALIDA\n");getNumber (text, min, max)}}}
   /*Define la clase que nos permite controlar la interfar, la clase solo actúa como interfaz para la función frame que
   Realmente es el objeto que tiene la implementacion, (En Scala Funciones == Objetos)*/
-  abstract trait Interfaz extends MainFrame{
+  abstract trait Interfaz {
     def updateContent (tablero : List[Int]);  //MUESTRA EL TABLERO
     def setPoints (points : Int);             //MUESTRA LOS PUNTOS
     def setAccPoints (acc_points : Int);      //MUESTRA LOS PUNTOS ACUMULADOS
@@ -409,7 +408,7 @@ object main extends App {
     def getOption (option : String) : Int= getNumber(option, 0, 1)                   //Retorna una opcion
     def getMovement () : Int= getNumber("Moviento", 1, 4)                            //Retorna un moviento realizado
   }
-  def frame (tablero : List[Int], cols:Int) : Interfaz = new Interfaz {
+  def frame (tablero : List[Int], cols:Int) : Interfaz = new MainFrame with Interfaz {
     //Se utiliza para leer la entrada de la interfaz evitando polling pero sin cambiar el código como en caso de utilizar listeners
     val queue = new ArrayBlockingQueue[Int](1)
     def getMovement () : Int = queue.take
@@ -513,6 +512,7 @@ object main extends App {
     size = new Dimension(cols * 27 + 340, cols * 22 + 90)
     minimumSize = size
     maximumSize = size
+    this.visible=true
   }
   /*Columnas de tablero para cada nivel*/
   def getCols (nivel : Int) : Int = nivel match {
